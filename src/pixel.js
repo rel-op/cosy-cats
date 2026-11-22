@@ -256,6 +256,12 @@ export class Pixel {
     return out;
   }
 
+  // CSS pixels on screen -> a ray into the world (the camera is orthographic, so every ray is parallel)
+  ray(x, y) {
+    const nx = ((x - this.offset.x) / (this.low.x * this.px)) * 2 - 1, ny = 1 - ((y - this.offset.y) / (this.low.y * this.px)) * 2;
+    return { origin: new THREE.Vector3(nx, ny, -1).unproject(this.camera), dir: this.dir.clone().negate() };
+  }
+
   // iris wipe centred on a world position; amount 1 = fully open, 0 = closed, null = off
   iris(pos, amount) {
     const u = this.uniforms.uIris.value;

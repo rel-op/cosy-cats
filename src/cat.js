@@ -446,7 +446,7 @@ export class Cat {
         if (o === c) continue;
         const cx = clamp(this.pos.x, o.x0, o.x1);
         const cz = clamp(this.pos.z, o.z0, o.z1);
-        if (Math.hypot(this.pos.x - cx, this.pos.z - cz) < r * 0.8 && o.y0 >= this.pos.y + this.height - 0.05 && ny + this.height > o.y0) {
+        if (Math.hypot(this.pos.x - cx, this.pos.z - cz) < r * 0.3 && o.y0 >= this.pos.y + this.height - 0.05 && ny + this.height > o.y0) { // a real overhang, not just a lip
           ny = o.y0 - this.height;
         }
       }

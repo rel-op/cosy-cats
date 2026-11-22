@@ -11,6 +11,8 @@ export class Input {
     this.tapped = new Set(); // keys pressed since the last poll, so a quick tap is never missed
     this.devices = new Map();
     this.virtuals = new Map();
+    this.pointer = null; // extra input from touch or mouse, folded into the keyboard's player
+    this.keySteer = false; // true while the keys themselves are steering
     addEventListener('keydown', (e) => {
       if (PREVENT.has(e.code)) e.preventDefault();
       this.keys.add(e.code);
@@ -39,14 +41,19 @@ export class Input {
   poll() {
     const k = this.keys, tapped = this.tapped;
     const has = (...codes) => codes.some((c) => k.has(c) || tapped.has(c));
+    const kx = (has('KeyD', 'ArrowRight') ? 1 : 0) - (has('KeyA', 'ArrowLeft') ? 1 : 0);
+    const ky = (has('KeyW', 'ArrowUp') ? 1 : 0) - (has('KeyS', 'ArrowDown') ? 1 : 0);
+    const pt = this.pointer || {};
+    this.keySteer = kx !== 0 || ky !== 0;
     this.apply(this.device('kb'), {
-      x: (has('KeyD', 'ArrowRight') ? 1 : 0) - (has('KeyA', 'ArrowLeft') ? 1 : 0),
-      y: (has('KeyW', 'ArrowUp') ? 1 : 0) - (has('KeyS', 'ArrowDown') ? 1 : 0),
-      jump: has('Space'),
-      act: has('KeyE', 'KeyF'),
+      x: this.keySteer ? kx : pt.x || 0,
+      y: this.keySteer ? ky : pt.y || 0,
+      jump: has('Space') || !!pt.jump,
+      act: has('KeyE', 'KeyF') || !!pt.act,
       meow: has('KeyQ', 'KeyM'),
       swap: has('Tab', 'KeyR'),
       menu: has('Enter', 'Escape'),
+      wake: !!pt.wake,
     });
     tapped.clear();
 
@@ -90,6 +97,6 @@ export class Input {
       d.held[name] = down;
       any = any || down;
     }
-    d.active = any;
+    d.active = any || !!raw.wake;
   }
 }

@@ -100,8 +100,9 @@ export function buildRooms(W, scene) {
     W.addBowl('water', 'home', b.p(8.1, 0.015, 5.15));
     // cat tree by the window, curtains, shelves and pictures
     b.block(5.2, 5.9, 0, 0.08, 0.5, 1.2, '#b9a2ee', { climb: false });
-    b.block(5.42, 5.68, 0, 1.3, 0.72, 0.98, '#d9c9a3'); b.block(5.1, 6.0, 1.3, 1.42, 0.4, 1.3, '#b9a2ee');
-    b.block(6.35, 6.6, 0, 2.0, 0.3, 0.55, '#d9c9a3'); b.block(6.0, 6.95, 2.0, 2.12, 0.1, 0.95, '#b9a2ee'); b.box(5.9, 6.4, 1.42, 1.5, 0.5, 0.9, '#b9a2ee');
+    // posts sit flush with the near corner of each platform, so there is a clear face to climb
+    b.block(5.74, 6.0, 0, 1.42, 1.04, 1.3, '#d9c9a3'); b.block(5.1, 6.0, 1.3, 1.42, 0.4, 1.3, '#b9a2ee');
+    b.block(6.69, 6.95, 0, 2.12, 0.69, 0.95, '#d9c9a3'); b.block(6.0, 6.95, 2.0, 2.12, 0.1, 0.95, '#b9a2ee');
     W.addBed('cattree', 'home', b.p(6.48, 2.12, 0.52), 0.5);
     for (const x of [5.25, 7.55]) b.box(x - 0.16, x + 0.16, 1.0, 2.85, 0.05, 0.1, '#d98a8a');
     b.box(5.1, 7.7, 2.8, 2.9, 0.03, 0.14, C.woodD);

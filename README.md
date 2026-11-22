@@ -24,6 +24,20 @@ Then open the address it prints (usually http://localhost:5173). It works with g
 | Swap cats | LB / RB | Tab |
 | Choose cats | Start | Enter |
 
+**Touch and mouse** work too, without on-screen sticks:
+
+| Tap or click | What happens |
+|---|---|
+| The ground | Walk there, finding the way round fences |
+| Something high (a tree fork, a roof, a shelf) | Walk to it and climb up |
+| A toy, a bowl, a doorway, a bed | Go and pick it up, eat, go in, or settle down |
+| Your own cat | Hop (or settle down, if she is standing in a bed) |
+| Another cat | Meow to call it; a kitten next to mama hops on her back |
+| Twice quickly | Hop on the way |
+| Press and hold | She follows your finger |
+
+Two corner icons: the moon curls up for a nap anywhere, the paw opens the cat chooser (which also lets you switch which cat you are). Touch and mouse steer the same cat as the keyboard, so one person can mix them; a gamepad can still join as the second player.
+
 - The first device to press something plays mama. A second gamepad (or the keyboard) can join at any time and takes a kitten.
 - Walk into something and keep pushing to climb it. Mama climbs anything; kittens manage low things and ride on her back for the rest.
 - Walking into a small space (the cat flap, the cardboard box, a shed door, the hollow log) takes the whole family inside.
@@ -49,6 +63,7 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 - `src/world.js`, `src/rooms.js`, `src/props.js`, `src/critters.js` gardens, interiors, scenery pieces, wildlife
 - `src/pixel.js` the pixel-art renderer (low-resolution render, outlines, glow, palette, iris wipes)
 - `src/build.js` shared materials and the builder that bakes scenery into a few meshes
+- `src/pointer.js`, `src/nav.js` touch and mouse taps, and route-finding for tap-to-go
 - `src/daynight.js`, `src/audio.js`, `src/labels.js`, `src/fx.js`, `src/menu.js`, `src/input.js` light, sound, floating words, particles, the cat chooser, input
 
 ## Tools

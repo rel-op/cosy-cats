@@ -13,6 +13,8 @@ import { Labels } from './labels.js';
 import { Audio } from './audio.js';
 import { Fx } from './fx.js';
 import { Menu } from './menu.js';
+import { Pointer } from './pointer.js';
+import { Nav } from './nav.js';
 
 const params = new URLSearchParams(location.search);
 const CAPTURE = params.has('capture'); // trailer mode: stepped by hand, silent, no saved game
@@ -625,6 +627,8 @@ const menu = new Menu({
     save.kittens.pop();
   },
   tick: () => audio.play('tick', { vol: 0.5 }),
+  nameOf: (p) => (p.cat === mama ? 'mama' : 'kitten ' + cats.indexOf(p.cat)),
+  swap: (p) => swap(p),
   changed: () => { labels.enabled = save.words; audio.musicOn = save.music; persist(); },
 });
 labels.enabled = save.words;
@@ -697,6 +701,267 @@ function updateAudio(dt) {
   audio.update(dt);
 }
 
+// ---------- touch and mouse: tap where you want to go ----------
+// Tap the ground to walk there, tap a thing to use it, tap your own cat to hop, tap another cat to call it.
+// Pressing and holding steers towards the finger. All of it drives the same player as the keyboard.
+const pointer = new Pointer();
+const nav = new Nav(world);
+let goal = null; // what the tapped-for cat is on its way to do
+let tapRaw = {}; // one-frame button presses
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const tapPlayer = () => players.find((p) => p.dev.id === 'kb');
+const stickFor = (wx, wz) => { const m = Math.hypot(wx, wz) || 1; return { x: (wx * RIGHT.x + wz * RIGHT.z) / m, y: (wx * AWAY.x + wz * AWAY.z) / m }; };
+// the cat that actually walks: a kitten riding an unsteered mama steers her
+const moverOf = (cat) => (cat.state === 'ride' && cat.mount && !isHuman(cat.mount) ? cat.mount : cat);
+const supportCollider = (x, z, y) => world.colliders.find((c) => Math.abs(c.y1 - y) < 0.1 && x > c.x0 - 0.1 && x < c.x1 + 0.1 && z > c.z0 - 0.1 && z < c.z1 + 0.1) || null;
+
+// what is under the finger: a cat, a thing, a doorway, a bed, or just a place to stand
+function pickAt(sx, sy, me) {
+  const s = { x: 0, y: 0 }, unit = pixel.ppu * pixel.px;
+  let best = null, bestK = 1;
+  const consider = (pos, r, make) => { pixel.toScreen(pos, s); const k = Math.hypot(s.x - sx, s.y - sy) / Math.max(26, r * unit); if (k < bestK) { bestK = k; best = make(); } };
+  for (const c of cats) consider(V(c.pos.x, c.pos.y + c.height * 0.5, c.pos.z), c === me ? (c.isKitten ? 0.36 : 0.45) : c.isKitten ? 0.42 : 0.5, () => ({ kind: c === me ? 'self' : 'cat', cat: c }));
+  for (const it of world.items) if (it.region === world.region && !it.heldBy && !it.bed) consider(it.mesh.position, 0.4, () => ({ kind: 'item', item: it, x: it.mesh.position.x, y: it.mesh.position.y - it.rest, z: it.mesh.position.z }));
+  for (const b of world.bowls) if (b.region === world.region) consider(V(b.x, b.y + 0.1, b.z), 0.45, () => ({ kind: 'bowl', bowl: b, x: b.x, y: b.y, z: b.z }));
+  for (const p of world.portals) if (p.region === world.region) consider(V(p.x, p.y + 0.35, p.z), 0.6, () => ({ kind: 'portal', portal: p, x: p.x, y: p.y, z: p.z }));
+  // a clear hit on a thing wins; a near miss on a cat gives way to a bed under the finger
+  const nearCat = best && (best.kind === 'self' || best.kind === 'cat') && bestK > 0.55;
+  if (best && !nearCat) return best;
+  const { origin: o, dir: d } = pixel.ray(sx, sy);
+  let t = -o.y / d.y, hit = null, axis = 'y';
+  for (const c of world.colliders) {
+    let t0 = -Infinity, t1 = Infinity, ax = 'y';
+    for (const [k, lo, hi] of [['x', c.x0, c.x1], ['y', c.y0, c.y1], ['z', c.z0, c.z1]]) {
+      let a = (lo - o[k]) / d[k], b2 = (hi - o[k]) / d[k];
+      if (a > b2) [a, b2] = [b2, a];
+      if (a > t0) { t0 = a; ax = k; }
+      if (b2 < t1) t1 = b2;
+    }
+    if (t0 <= t1 && t0 > 0 && t0 < t) { t = t0; hit = c; axis = ax; }
+  }
+  const p = o.clone().addScaledVector(d, t);
+  let x = p.x, z = p.z, y = 0, c = null;
+  if (hit && axis === 'y') { y = hit.y1; c = hit; }
+  else if (hit && hit.climb && hit.y1 > 0.45) {
+    // the side of something climbable: aim for its top
+    const ix = Math.min(0.3, (hit.x1 - hit.x0) / 2), iz = Math.min(0.3, (hit.z1 - hit.z0) / 2);
+    x = clamp(x, hit.x0 + ix, hit.x1 - ix); z = clamp(z, hit.z0 + iz, hit.z1 - iz); y = hit.y1; c = hit;
+  } else if (hit) {
+    // a wall: stand in front of it
+    if (axis === 'x') x += (d.x < 0 ? 1 : -1) * 0.6; else z += (d.z < 0 ? 1 : -1) * 0.6;
+  }
+  const b = world.bounds();
+  x = clamp(x, b.x0, b.x1); z = clamp(z, b.z0, b.z1);
+  const bed = world.beds.find((q) => q.region === world.region && Math.hypot(x - q.x, z - q.z) < q.r + 0.1 && Math.abs(y - q.y) < 0.5);
+  if (bed) return { kind: 'bed', bed, x: bed.x, y: bed.y, z: bed.z, c };
+  if (best) return best;
+  return { kind: 'go', x, y, z, c };
+}
+
+// a way up onto something: which face to climb, and where to stand first
+function findAccess(cat, d) {
+  const r = cat.radius;
+  const near = (g, c) => g.x0 < c.x1 + 0.35 && g.x1 > c.x0 - 0.35 && g.z0 < c.z1 + 0.35 && g.z1 > c.z0 - 0.35;
+  const over = (x, z, top) => world.colliders.some((o) => o.y0 > 0.4 && o.y0 < top + 0.1 && x > o.x0 - r * 0.3 && x < o.x1 + r * 0.3 && z > o.z0 - r * 0.3 && z < o.z1 + r * 0.3);
+  const bounds = world.bounds(), cands = [];
+  for (const g of world.colliders) {
+    if (!g.climb || g.y0 > 0.45 || Math.abs(g.y1 - d.y) > cat.step + 0.02 || g.y1 - 0.15 > cat.climbMax) continue;
+    if (d.c ? g !== d.c && !near(g, d.c) : !(d.x > g.x0 - 0.4 && d.x < g.x1 + 0.4 && d.z > g.z0 - 0.4 && d.z < g.z1 + 0.4)) continue;
+    for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const fx = nx ? (nx > 0 ? g.x1 : g.x0) : clamp(d.x, g.x0 + 0.1, g.x1 - 0.1), fz = nz ? (nz > 0 ? g.z1 : g.z0) : clamp(d.z, g.z0 + 0.1, g.z1 - 0.1);
+      const ax = fx + nx * (r + 0.2), az = fz + nz * (r + 0.2);
+      if (ax < bounds.x0 || ax > bounds.x1 || az < bounds.z0 || az > bounds.z1 || over(fx + nx * r, fz + nz * r, g.y1) || world.blockedAt(ax, world.supportAt(ax, az, 0.3, 0.1) + 0.02, az, r * 0.9, cat.height)) continue;
+      cands.push({ g, ax, az, px: fx - nx * 0.25, pz: fz - nz * 0.25, est: Math.hypot(ax - cat.pos.x, az - cat.pos.z) + Math.hypot(fx - d.x, fz - d.z) });
+    }
+  }
+  cands.sort((a, c) => a.est - c.est);
+  let best = null;
+  for (const c of cands.slice(0, 5)) {
+    const p = nav.path(world.region, cat, cat.pos, { x: c.ax, z: c.az });
+    if (!p) continue;
+    const total = p.cost + Math.hypot(c.px - d.x, c.pz - d.z);
+    if (!best || total < best.total) best = { ...c, pts: p.pts, total };
+  }
+  return best;
+}
+
+// a way down off whatever the cat is standing on
+function findExit(cat, d) {
+  const s = supportCollider(cat.pos.x, cat.pos.z, cat.pos.y);
+  if (!s) return null;
+  const b = world.bounds();
+  let best = null;
+  for (const [nx, nz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const ex = nx ? (nx > 0 ? s.x1 : s.x0) + nx * (cat.radius + 0.35) : clamp(cat.pos.x, s.x0 + 0.1, s.x1 - 0.1);
+    const ez = nz ? (nz > 0 ? s.z1 : s.z0) + nz * (cat.radius + 0.35) : clamp(cat.pos.z, s.z0 + 0.1, s.z1 - 0.1);
+    if (ex < b.x0 || ex > b.x1 || ez < b.z0 || ez > b.z1) continue;
+    if (world.supportAt(ex, ez, cat.pos.y, 0.05) > cat.pos.y - 0.2) continue; // not a drop
+    let clear = true;
+    for (let k = 1; k <= 6 && clear; k++) clear = !world.blockedAt(cat.pos.x + ((ex - cat.pos.x) * k) / 6, cat.pos.y + 0.05, cat.pos.z + ((ez - cat.pos.z) * k) / 6, cat.radius * 0.9, cat.height);
+    if (!clear) continue;
+    const est = Math.hypot(ex - cat.pos.x, ez - cat.pos.z) + Math.hypot(ex - d.x, ez - d.z);
+    if (!best || est < best.est) best = { x: ex, z: ez, est };
+  }
+  return best;
+}
+
+function plan(g) {
+  const cat = moverOf(g.cat), d = g.dest, steps = (g.steps = []);
+  Object.assign(g, { i: 0, wp: 0, stepT: 0, stuckT: 0, lx: cat.pos.x, ly: cat.pos.y, lz: cat.pos.z });
+  if (g.pick.kind === 'mount') { steps.push({ type: 'chase' }); return; }
+  const low = cat.step + 0.15;
+  const groundPath = () => { const p = nav.path(world.region, cat, cat.pos, d); return { type: 'path', pts: p ? p.pts : [{ x: d.x, z: d.z }] }; };
+  if (cat.pos.y > low) {
+    // up on something already
+    let straight = d.y > low && Math.abs(d.y - cat.pos.y) < 0.4;
+    for (let k = 1; k <= 6 && straight; k++) {
+      const x = cat.pos.x + ((d.x - cat.pos.x) * k) / 6, z = cat.pos.z + ((d.z - cat.pos.z) * k) / 6;
+      straight = !world.blockedAt(x, cat.pos.y + 0.05, z, cat.radius * 0.9, cat.height) && world.supportAt(x, z, cat.pos.y, 0.3) > cat.pos.y - 0.4;
+    }
+    if (straight) { steps.push({ type: 'direct', x: d.x, z: d.z }); return; }
+    const ex = findExit(cat, d);
+    steps.push({ type: 'descend', x: ex ? ex.x : d.x, z: ex ? ex.z : d.z, from: cat.pos.y }, { type: 'replan' });
+    return;
+  }
+  if (d.y <= low) {
+    steps.push(groundPath());
+    if (g.pick.kind === 'portal') steps.push({ type: 'direct', x: d.x, z: d.z });
+    return;
+  }
+  const acc = findAccess(cat, d);
+  if (!acc) { steps.push(groundPath()); g.cant = true; return; } // can't get up there: go and stand beneath it
+  steps.push({ type: 'path', pts: [...acc.pts, { x: acc.ax, z: acc.az }] }, { type: 'climb', x: acc.px, z: acc.pz, y: acc.g.y1 }, { type: 'direct', x: d.x, z: d.z });
+}
+
+function finishGoal(g) {
+  const me = g.cat, k = g.pick.kind;
+  goal = null;
+  if (g.cant || me.state !== 'free' || !me.grounded) return;
+  if (k === 'item') {
+    const it = g.pick.item;
+    if (!it.heldBy && !it.bed && Math.hypot(it.mesh.position.x - me.pos.x, it.mesh.position.z - me.pos.z) < me.radius + 0.7) { if (me.held) drop(me, world.bedAt(me.pos)); pickUp(me, it); }
+  } else if (k === 'bowl') {
+    if (me.held) drop(me, null);
+    eat(me, g.pick.bowl);
+  } else if (k === 'bed') {
+    if (!world.bedAt(me.pos)) return;
+    if (me.held) drop(me, g.pick.bed); else curlUp(me);
+  } else if (k === 'mount') {
+    if (flat(me, mama) < 1.3 && mama.state === 'free' && mama.grounded) mount(me);
+  }
+}
+
+// returns the stick direction for this frame, or null when there is nothing to do
+function runGoal(dt) {
+  const g = goal;
+  if (!g || trans) return null;
+  const cat = moverOf(g.cat);
+  if (g.region !== world.region || !['free', 'climb'].includes(cat.state)) { goal = null; return null; }
+  const d = g.dest, far = (x, z) => Math.hypot(x - cat.pos.x, z - cat.pos.z), steer = (x, z) => stickFor(x - cat.pos.x, z - cat.pos.z);
+  if (g.reach && far(d.x, d.z) < g.reach && Math.abs(cat.pos.y - d.y) < 0.6 && cat.grounded) { finishGoal(g); return null; }
+  // watchdog: if she isn't getting anywhere, try another route once, then give up quietly
+  g.stuckT += dt;
+  if (g.stuckT > 1.1) {
+    const moved = Math.hypot(cat.pos.x - g.lx, cat.pos.z - g.lz) + Math.abs(cat.pos.y - g.ly);
+    Object.assign(g, { stuckT: 0, lx: cat.pos.x, ly: cat.pos.y, lz: cat.pos.z });
+    if (moved < 0.12) { g.fails++; if (g.fails >= 2) { goal = null; return null; } plan(g); }
+  }
+  for (let guard = 0; guard < 6; guard++) {
+    const st = g.steps[g.i];
+    if (!st) { finishGoal(g); return null; }
+    const next = () => { g.i++; g.stepT = 0; };
+    g.stepT += guard ? 0 : dt;
+    if (st.type === 'replan') { plan(g); continue; }
+    if (st.type === 'path') {
+      const p = st.pts[g.wp];
+      if (!p) { g.wp = 0; next(); continue; }
+      if (far(p.x, p.z) < (g.wp === st.pts.length - 1 ? 0.2 : 0.32)) { g.wp++; continue; }
+      return steer(p.x, p.z);
+    }
+    if (st.type === 'climb') {
+      if (cat.grounded && cat.pos.y >= st.y - 0.06) { next(); continue; }
+      if (g.stepT > 7) { goal = null; return null; }
+      return steer(st.x, st.z);
+    }
+    if (st.type === 'direct') {
+      if (far(st.x, st.z) < 0.2 || g.stepT > 4) { next(); continue; }
+      return steer(st.x, st.z);
+    }
+    if (st.type === 'descend') {
+      if (cat.grounded && cat.pos.y < st.from - 0.2) { next(); continue; }
+      if (g.stepT > 4) { goal = null; return null; }
+      return steer(st.x, st.z);
+    }
+    if (st.type === 'chase') {
+      if (flat(g.cat, mama) < 1.05 || g.stepT > 5) { next(); continue; }
+      return steer(mama.pos.x, mama.pos.z);
+    }
+  }
+  return null;
+}
+
+function handleTap(ev, p) {
+  const me = p.cat;
+  if (ev.type === 'paw') { if (!trans && !sleep.active) menu.toggle(undefined, p); return; }
+  if (menu.open || sleep.active || trans) return;
+  if (ev.type === 'nap') {
+    goal = null;
+    if (me.state === 'curl') me.uncurl();
+    else if (me.state === 'free' && me.grounded) curlUp(me);
+    return;
+  }
+  if (ev.double && goal) { tapRaw.jump = true; return; } // a second quick tap: hop on the way
+  let pick = pickAt(ev.x, ev.y, me);
+  if (pick.kind === 'self') {
+    goal = null;
+    const here = me.state === 'free' && me.grounded ? world.bedAt(me.pos) : null;
+    if (me.state === 'ride') tapRaw.act = true;
+    else if (here) { if (me.held) drop(me, here); else curlUp(me); } // standing in a bed: settle down, or tuck in what she's carrying
+    else tapRaw.jump = true;
+    return;
+  }
+  if (me.state === 'curl' || me.state === 'eat') me.uncurl();
+  if (pick.kind === 'cat') {
+    const close = me.isKitten && pick.cat === mama && me.state === 'free' && mama.state === 'free' && flat(me, mama) < 3.5 && Math.abs(me.pos.y - mama.pos.y) < 0.6;
+    if (!close) { goal = null; meow(me); return; }
+    pick = { kind: 'mount', x: mama.pos.x, y: mama.pos.y, z: mama.pos.z };
+  }
+  const mover = moverOf(me);
+  const dest = { x: pick.x, y: pick.y, z: pick.z, c: pick.c || (pick.y > mover.step + 0.15 ? supportCollider(pick.x, pick.z, pick.y) : null) };
+  goal = { cat: me, pick, dest, region: world.region, fails: 0, reach: { item: mover.radius + 0.42, bowl: mover.radius + 0.45 }[pick.kind] || 0 };
+  plan(goal);
+  fx.ripple(V(pick.x, 0, pick.z), pick.y + 0.07);
+}
+
+function updatePointer(dt) {
+  pointer.update();
+  pointer.show(pointer.used && started && !CAPTURE);
+  const p = tapPlayer();
+  const raw = {};
+  if (!p) {
+    // the first tap just starts things off
+    if (pointer.events.length || pointer.hold) raw.wake = true;
+    pointer.events.length = 0;
+    input.pointer = raw;
+    return;
+  }
+  for (const ev of pointer.events.splice(0)) handleTap(ev, p);
+  if (goal && (goal.cat !== p.cat || input.keySteer)) goal = null;
+  if (pointer.hold && !menu.open && !sleep.active && !trans) {
+    // press and hold: come this way
+    goal = null;
+    const me = moverOf(p.cat), s = pixel.toScreen(V(me.pos.x, me.pos.y + me.height * 0.5, me.pos.z));
+    const dx = pointer.hold.x - s.x, dy = pointer.hold.y - s.y, len = Math.hypot(dx, dy);
+    if (len > 0.7 * pixel.ppu * pixel.px) { raw.x = dx / len; raw.y = -dy / len; } else raw.wake = true;
+  } else {
+    const s = runGoal(dt);
+    if (s) { raw.x = s.x; raw.y = s.y; }
+  }
+  Object.assign(raw, tapRaw);
+  tapRaw = {};
+  input.pointer = raw;
+}
+
 // ---------- rumble: a purr you can feel ----------
 let lastBoingWord = -9;
 function pad(dev) {
@@ -730,10 +995,11 @@ function step(dt) {
     if (!started) { start(); join(d); d.menu = d.act = d.jump = d.meow = d.swap = false; } else join(d);
   }
   portalCd = Math.max(0, portalCd - dt);
+  updatePointer(dt);
 
   if (started && !debug.freeze) {
     for (const p of players) {
-      if (p.dev.menu && !trans && !sleep.active) menu.toggle();
+      if (p.dev.menu && !trans && !sleep.active) menu.toggle(undefined, p);
       if (menu.open) menu.input(p.dev);
     }
     const busy = sleep.active || trans || menu.open;
@@ -760,7 +1026,7 @@ function step(dt) {
         }
       }
       cats.forEach((c, i) => {
-        c.useLatch = isHuman(c) || c.driven;
+        c.useLatch = (isHuman(c) || c.driven) && !(goal && moverOf(goal.cat) === c);
         if (!isHuman(c) && !c.driven && players.length) ai(c, dt, i);
         c.driven = false;
       });
@@ -851,4 +1117,4 @@ pixel.resize();
 if (CAPTURE) { step(1 / 60); render(); } else requestAnimationFrame(frame);
 
 // handy for poking at things from the console, for tests and for filming the trailer
-window.game = { weather, snap: () => { camSnap = true; }, join, debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };
+window.game = { pickAt, pointer, nav, get goal() { return goal; }, weather, snap: () => { camSnap = true; }, join, debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };
