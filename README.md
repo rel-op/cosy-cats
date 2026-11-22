@@ -2,6 +2,8 @@
 
 A small, goal-free game: be a mother cat or one of her kittens, wander your home, your garden and the neighbours' gardens, and curl up somewhere for the night. No scoring, no threat, nothing to fail.
 
+Play it in a browser: https://rel-op.github.io/cosy-cats/
+
 `trailer.mp4` in this folder shows it in motion.
 
 ## Run

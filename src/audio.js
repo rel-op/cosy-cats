@@ -1,5 +1,6 @@
 // Sound: short effects and seamless loops through Web Audio, music streamed through audio elements.
 // Everything is optional: if a file is missing or audio is locked, calls quietly do nothing.
+const BASE = import.meta.env.BASE_URL; // wherever the game is served from
 const VARIANTS = { meow: ['meow1', 'meow2', 'meow3'], mew: ['mew1', 'mew2', 'mew3'], trill: ['trill1', 'trill2'] };
 const LOOPS = ['purr', 'amb_day', 'amb_night', 'amb_fire', 'amb_room', 'amb_water', 'amb_rain'];
 
@@ -15,7 +16,7 @@ export class Audio {
     this.log = []; // { t, name, vol } for the trailer's soundtrack
     this.time = 0;
     this.names = [];
-    this.ready = fetch('/audio/manifest.json').then((r) => r.json()).then((names) => { this.names = names; }).catch(() => {});
+    this.ready = fetch(`${BASE}audio/manifest.json`).then((r) => r.json()).then((names) => { this.names = names; }).catch(() => {});
   }
 
   unlock() {
@@ -41,7 +42,7 @@ export class Audio {
   async load() {
     for (const name of this.names) {
       if (name.startsWith('music_') || name === 'sting_sleep') continue;
-      fetch(`/audio/${name}.mp3`).then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b)).then((buf) => {
+      fetch(`${BASE}audio/${name}.mp3`).then((r) => r.arrayBuffer()).then((b) => this.ctx.decodeAudioData(b)).then((buf) => {
         this.buffers.set(name, buf);
         if (LOOPS.includes(name) && this.loops.has(name)) this.startLoop(name);
       }).catch(() => {});
@@ -124,7 +125,7 @@ export class Audio {
     if (this.gap > 0 || !this.names.includes(this.track)) return;
     let el = cur;
     if (!el) {
-      el = new window.Audio(`/audio/${this.track}.mp3`);
+      el = new window.Audio(`${BASE}audio/${this.track}.mp3`);
       el.onended = () => { this.gap = 25 + Math.random() * 30; };
       this.music.set(this.track, el);
     }
