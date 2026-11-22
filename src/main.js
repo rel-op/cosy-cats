@@ -75,7 +75,9 @@ function toast(text) {
 }
 function join(dev) {
   if (players.length >= 2 || players.some((p) => p.dev === dev)) return;
-  const cat = cats.find((c) => !players.some((p) => p.cat === c));
+  // whoever starts first carries on as the cat they were last time
+  const was = players.length === 0 ? cats[save.cat] : null;
+  const cat = was || cats.find((c) => !players.some((p) => p.cat === c));
   const slot = [0, 1].find((i) => !players.some((p) => p.slot === i));
   const p = { dev, cat, slot, idle: 0, human: true, dot: labels.dot(COLORS[slot]) };
   p.dot.show = 4;
@@ -97,6 +99,7 @@ function swap(p) {
   else if (q) { const mine = p.cat; p.cat = q.cat; q.cat = mine; }
   for (const x of players) x.dot.show = 3;
   audio.play('tick', { vol: 0.6 });
+  snapshot();
 }
 
 // ---------- words ----------
@@ -153,15 +156,19 @@ function dismount(k, spot = besideSpot(mama, k, cats.indexOf(k))) {
 // ---------- carrying ----------
 function nearestItem(cat) {
   let best = null, bd = cat.radius + 0.5;
+  // something already tucked into a bed is only picked up nose-first, so settling down beside it doesn't grab it
+  const nx = cat.pos.x + Math.sin(cat.yaw) * (cat.radius + 0.12), nz = cat.pos.z + Math.cos(cat.yaw) * (cat.radius + 0.12);
   for (const it of world.items) {
-    if (it.heldBy || it.bed || it.region !== world.region) continue;
+    if (it.heldBy || it.region !== world.region) continue;
     const p = it.mesh.position;
+    if (Math.abs(p.y - cat.pos.y) > 0.6) continue;
     const d = Math.hypot(p.x - cat.pos.x, p.z - cat.pos.z);
-    if (d < bd && Math.abs(p.y - cat.pos.y) < 0.6) { best = it; bd = d; }
+    if (it.bed ? Math.hypot(p.x - nx, p.z - nz) < 0.3 && d < bd : d < bd) { best = it; bd = d; }
   }
   return best;
 }
 function pickUp(cat, it) {
+  if (it.bed) { it.bed.items.splice(it.bed.items.indexOf(it), 1); it.bed = null; }
   it.heldBy = cat;
   cat.held = it;
   cat.mouth.add(it.mesh);
@@ -179,7 +186,10 @@ function drop(cat, bed) {
   it.mesh.scale.setScalar(1);
   it.mesh.rotation.set(0, cat.yaw, 0);
   if (bed) {
-    const a = bed.items.length * 2.4 + 0.9, r = bed.r * 0.78;
+    let slot = 0;
+    while (bed.items.some((o) => o.slot === slot)) slot++;
+    it.slot = slot;
+    const a = slot * 2.4 + 0.9, r = bed.r * 0.78;
     let x = bed.x + Math.cos(a) * r, z = bed.z + Math.sin(a) * r;
     if (Math.abs(world.supportAt(x, z, bed.y, 0.2) - bed.y) > 0.25) { x = bed.x + Math.cos(a) * 0.2; z = bed.z + Math.sin(a) * 0.2; }
     it.mesh.position.set(x, bed.y + it.rest, z);
@@ -192,7 +202,36 @@ function drop(cat, bed) {
     it.mesh.position.set(x, world.supportAt(x, z, cat.pos.y, 0.3) + it.rest, z);
     audio.play('drop', { vol: 0.6 });
   }
+  snapshot();
 }
+
+// ---------- remembering where things are ----------
+// Saved whenever something is put down, when the family sleeps, and when the page is left.
+function snapshot() {
+  if (!started) return;
+  save.items = world.items.map((it) => {
+    const h = it.heldBy, p = h ? h.pos : it.mesh.position;
+    // something still in a mouth is remembered as lying at that cat's feet
+    return { n: it.name, r: h ? world.region : it.region, x: +p.x.toFixed(2), y: +(h ? h.pos.y + it.rest : p.y).toFixed(2), z: +p.z.toFixed(2), b: h ? -1 : world.beds.indexOf(it.bed), s: it.slot || 0, a: +(h ? 0 : it.mesh.rotation.y).toFixed(2) };
+  });
+  if (players[0]) save.cat = cats.indexOf(players[0].cat);
+  persist();
+}
+function restoreItems() {
+  if (!Array.isArray(save.items) || save.items.length !== world.items.length) return;
+  save.items.forEach((s, i) => {
+    const it = world.items[i];
+    if (!s || s.n !== it.name || !world.regions[s.r]) return;
+    it.region = s.r;
+    world.regions[s.r].group.add(it.mesh);
+    it.mesh.position.set(s.x, s.y, s.z);
+    it.mesh.rotation.set(0, s.a || 0, 0);
+    const bed = world.beds[s.b];
+    if (bed && bed.region === s.r) { it.bed = bed; it.slot = s.s || 0; bed.items.push(it); }
+  });
+}
+addEventListener('pagehide', snapshot);
+document.addEventListener('visibilitychange', () => { if (document.hidden) snapshot(); });
 
 // ---------- curling up, eating ----------
 function curlUp(cat) {
@@ -518,7 +557,7 @@ function updateSleep(dt) {
         for (const c of cats) c.asleep = true;
         fx.hearts(V(mama.pos.x, mama.pos.y + 0.5, mama.pos.z), 4);
         save.den = { region: world.region, x: mama.pos.x, y: mama.pos.y, z: mama.pos.z };
-        persist();
+        snapshot();
       }
     }
     return;
@@ -648,6 +687,8 @@ addEventListener('keydown', (e) => {
 });
 addEventListener('pointerdown', () => audio.unlock());
 
+restoreItems();
+
 // wake up where the family last slept
 if (save.den && world.regions[save.den.region]) {
   world.setRegion(save.den.region);
@@ -721,7 +762,7 @@ function pickAt(sx, sy, me) {
   let best = null, bestK = 1;
   const consider = (pos, r, make) => { pixel.toScreen(pos, s); const k = Math.hypot(s.x - sx, s.y - sy) / Math.max(26, r * unit); if (k < bestK) { bestK = k; best = make(); } };
   for (const c of cats) consider(V(c.pos.x, c.pos.y + c.height * 0.5, c.pos.z), c === me ? (c.isKitten ? 0.36 : 0.45) : c.isKitten ? 0.42 : 0.5, () => ({ kind: c === me ? 'self' : 'cat', cat: c }));
-  for (const it of world.items) if (it.region === world.region && !it.heldBy && !it.bed) consider(it.mesh.position, 0.4, () => ({ kind: 'item', item: it, x: it.mesh.position.x, y: it.mesh.position.y - it.rest, z: it.mesh.position.z }));
+  for (const it of world.items) if (it.region === world.region && !it.heldBy) consider(it.mesh.position, 0.4, () => ({ kind: 'item', item: it, x: it.mesh.position.x, y: it.mesh.position.y - it.rest, z: it.mesh.position.z }));
   for (const b of world.bowls) if (b.region === world.region) consider(V(b.x, b.y + 0.1, b.z), 0.45, () => ({ kind: 'bowl', bowl: b, x: b.x, y: b.y, z: b.z }));
   for (const p of world.portals) if (p.region === world.region) consider(V(p.x, p.y + 0.35, p.z), 0.6, () => ({ kind: 'portal', portal: p, x: p.x, y: p.y, z: p.z }));
   // a clear hit on a thing wins; a near miss on a cat gives way to a bed under the finger
@@ -839,7 +880,7 @@ function finishGoal(g) {
   if (g.cant || me.state !== 'free' || !me.grounded) return;
   if (k === 'item') {
     const it = g.pick.item;
-    if (!it.heldBy && !it.bed && Math.hypot(it.mesh.position.x - me.pos.x, it.mesh.position.z - me.pos.z) < me.radius + 0.7) { if (me.held) drop(me, world.bedAt(me.pos)); pickUp(me, it); }
+    if (!it.heldBy && Math.hypot(it.mesh.position.x - me.pos.x, it.mesh.position.z - me.pos.z) < me.radius + 0.7) { if (me.held) drop(me, world.bedAt(me.pos)); pickUp(me, it); }
   } else if (k === 'bowl') {
     if (me.held) drop(me, null);
     eat(me, g.pick.bowl);

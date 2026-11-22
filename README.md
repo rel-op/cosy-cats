@@ -43,7 +43,8 @@ Two corner icons: the moon curls up for a nap anywhere, the paw opens the cat ch
 - The first device to press something plays mama. A second gamepad (or the keyboard) can join at any time and takes a kitten.
 - Walk into something and keep pushing to climb it. Mama climbs anything; kittens manage low things and ride on her back for the rest.
 - Walking into a small space (the cat flap, the cardboard box, a shed door, the hollow log) takes the whole family inside.
-- Curl up together anywhere and everyone sleeps until morning. The game reopens where the family last slept.
+- Curl up together anywhere and everyone sleeps until morning.
+- The game remembers: it reopens where the family last slept, with every toy and treasure where it was left (in a bed, on the ground, wherever) and you as the same cat. Things tucked into a bed can be taken out again by walking up to them nose-first, or by tapping them. The save lives in the browser, so each device and browser has its own.
 - The "choose cats" panel changes coats, adds or removes kittens (up to four) and turns the sound words and music on or off. Nothing resets.
 - Now and then there is a gentle shower; indoors you hear it on the roof.
 - `T` skips ahead towards night, `P` starts or stops a shower.
@@ -72,4 +73,5 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 
 - `node tools/gen-audio.mjs` generates the sound effects, ambience and music with ElevenLabs (needs `ELEVENLABS_API_KEY` in `.env.local`).
 - `node tools/play.mjs <script.js>` drives the game in headless Chrome for tests and screenshots.
+- `node tools/save-check.mjs` checks that carried things and the chosen cat survive closing the game.
 - `node tools/trailer.mjs` films `trailer.mp4`; the shots are scripted in `tools/director.js`. The dev server must be running.
