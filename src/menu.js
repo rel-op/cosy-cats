@@ -8,6 +8,7 @@ export class Menu {
     this.open = false;
     this.row = 0;
     this.who = null; // the player who opened the panel
+    this.note = ''; // a line of help under the rows
     // touch and mouse: tap a row to choose it; the left or right half of a row steps back or forward
     this.el.addEventListener('click', (e) => {
       if (!this.open) return;
@@ -31,13 +32,17 @@ export class Menu {
     if (cats.length > 2) rows.push({ label: 'one fewer kitten', plain: true, press: () => { a.removeKitten(); this.row--; } });
     rows.push({ label: 'sound words', value: a.settings.words ? 'on' : 'off', turn: () => { a.settings.words = !a.settings.words; } });
     rows.push({ label: 'music', value: a.settings.music ? 'on' : 'off', turn: () => { a.settings.music = !a.settings.music; } });
+    // installing and updating: only shown when there is something to do
+    const app = a.app, offer = app && app.offer();
+    if (offer) rows.push({ label: 'install as an app', plain: true, press: () => { if (offer === 'prompt') app.install(); else this.note = app.steps(); } });
+    if (app && app.fresh) rows.push({ label: 'new version ready', value: 'restart', plain: true, press: () => app.restart() });
     rows.push({ label: 'back to the garden', plain: true, press: () => this.toggle(false) });
     return [...pre, ...rows];
   }
 
   toggle(on = !this.open, who = null) {
     this.open = on;
-    if (on) this.who = who;
+    if (on) { this.who = who; this.note = ''; }
     this.el.classList.toggle('hide', !on);
     if (on) { this.row = 0; this.draw(); }
     this.api.changed();
@@ -47,7 +52,7 @@ export class Menu {
     const rows = this.rows();
     this.row = Math.max(0, Math.min(rows.length - 1, this.row));
     const sw = (c) => `<span class="sw" style="background:linear-gradient(90deg, ${c.fur} 0 55%, ${c.stripe || c.tail2 || c.fur} 55% 78%, ${c.chest} 78%)"></span>`;
-    this.el.innerHTML = `<div class="panel"><h2>the cats</h2>${rows.map((r, i) => `<div class="row${i === this.row ? ' on' : ''}${r.plain ? ' plain' : ''}" data-i="${i}"><span>${r.label}</span><span class="v">${r.swatch ? sw(r.swatch) : ''}${r.value || ''}</span></div>`).join('')}<div class="hint">up and down to move, left and right to change, or tap</div></div>`;
+    this.el.innerHTML = `<div class="panel"><h2>the cats</h2>${rows.map((r, i) => `<div class="row${i === this.row ? ' on' : ''}${r.plain ? ' plain' : ''}" data-i="${i}"><span>${r.label}</span><span class="v">${r.swatch ? sw(r.swatch) : ''}${r.value || ''}</span></div>`).join('')}${this.note ? `<div class="note">${this.note}</div>` : ''}<div class="hint">up and down to move, left and right to change, or tap</div></div>`;
   }
 
   // feed it a device each frame while open

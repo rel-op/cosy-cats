@@ -29,6 +29,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; touch-action: none; -web
 .row.on .v::before { content: "\2039  "; } .row.on .v::after { content: "  \203A"; }
 .row.plain.on .v::before, .row.plain.on .v::after { content: ""; }
 .sw { display: inline-block; width: 0.9em; height: 0.9em; border: 3px solid #3a2f3a; margin-right: 0.4em; vertical-align: -0.12em; }
+.note { margin-top: 0.7em; max-width: 17em; font-size: 0.8em; color: #b9652a; }
 .hint { margin-top: 0.8em; font-size: 0.7em; opacity: 0.65; }
 @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-0.6vh); } }
 body.capture * { transition: none !important; animation: none !important; }

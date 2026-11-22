@@ -13,6 +13,7 @@ import { Labels } from './labels.js';
 import { Audio } from './audio.js';
 import { Fx } from './fx.js';
 import { Menu } from './menu.js';
+import { app, startApp } from './app.js';
 import { Pointer } from './pointer.js';
 import { Nav } from './nav.js';
 
@@ -668,6 +669,7 @@ const menu = new Menu({
   tick: () => audio.play('tick', { vol: 0.5 }),
   nameOf: (p) => (p.cat === mama ? 'mama' : 'kitten ' + cats.indexOf(p.cat)),
   swap: (p) => swap(p),
+  app,
   changed: () => { labels.enabled = save.words; audio.musicOn = save.music; persist(); },
 });
 labels.enabled = save.words;
@@ -686,6 +688,11 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyP' && started) { weather.on = !weather.on; weather.timer = weather.on ? 90 : 400; } // start or stop a shower
 });
 addEventListener('pointerdown', () => audio.unlock());
+
+// A new version that arrives before anyone has started playing is switched to at once;
+// after that it waits for the next time the game is opened, or for "restart" in the chooser.
+app.changed = () => { if (app.fresh && !started) app.restart(); else if (menu.open) menu.draw(); };
+startApp({ quiet: CAPTURE });
 
 restoreItems();
 
@@ -1158,4 +1165,4 @@ pixel.resize();
 if (CAPTURE) { step(1 / 60); render(); } else requestAnimationFrame(frame);
 
 // handy for poking at things from the console, for tests and for filming the trailer
-window.game = { pickAt, pointer, nav, get goal() { return goal; }, weather, snap: () => { camSnap = true; }, join, debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };
+window.game = { pickAt, pointer, nav, get goal() { return goal; }, weather, snap: () => { camSnap = true; }, join, debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, app, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };

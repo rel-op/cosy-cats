@@ -6,6 +6,15 @@ Play it in a browser: https://rel-op.github.io/cosy-cats/
 
 `trailer.mp4` in this folder shows it in motion.
 
+## Install and update
+
+From the web address the game can be installed as an app, which opens full screen with its own icon and works with no network:
+
+- **Chrome or Edge** (Mac, Windows, ROG Ally, Android): open the cat chooser (Enter, Start or the paw icon) and choose **install as an app**. The browser's own install button in the address bar does the same.
+- **Safari on a Mac:** File menu, then Add to Dock. **iPhone or iPad:** Share, then Add to Home Screen. The chooser row lists these steps.
+
+It updates by itself. Each time the game is opened it looks for a new version and fetches it in the background. If that finishes while the title is still showing, it switches straight away; if someone is already playing, nothing interrupts them: the new version is used the next time the game is opened, and the chooser shows **new version ready: restart** for anyone who wants it sooner. Restarting keeps the saved game.
+
 ## Run
 
 ```bash
@@ -67,6 +76,7 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 - `src/pixel.js` the pixel-art renderer (low-resolution render, outlines, glow, palette, iris wipes)
 - `src/build.js` shared materials and the builder that bakes scenery into a few meshes
 - `src/pointer.js`, `src/nav.js` touch and mouse taps, and route-finding for tap-to-go
+- `src/app.js` the install offer and the new-version notice; `tools/sw-template.js` is the offline script, which the build (`vite.config.js`) completes with the list of built files and a version made from their contents
 - `src/daynight.js`, `src/audio.js`, `src/labels.js`, `src/fx.js`, `src/menu.js`, `src/input.js` light, sound, floating words, particles, the cat chooser, input
 
 ## Tools
@@ -74,4 +84,6 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 - `node tools/gen-audio.mjs` generates the sound effects, ambience and music with ElevenLabs (needs `ELEVENLABS_API_KEY` in `.env.local`).
 - `node tools/play.mjs <script.js>` drives the game in headless Chrome for tests and screenshots.
 - `node tools/save-check.mjs` checks that carried things and the chosen cat survive closing the game.
+- `node tools/app-check.mjs` checks offline play, the install row and switching to a new version, against a built copy (`npm run build`, `npm run preview`).
+- `node tools/make-icons.mjs` photographs the app icons from the game (dev server running).
 - `node tools/trailer.mjs` films `trailer.mp4`; the shots are scripted in `tools/director.js`. The dev server must be running.
