@@ -29,7 +29,7 @@ const walk = async (dir, ms) => { for (const k of KEY[dir]) await page.keyboard.
 // ---- a save from before the toys: things listed by position, beds by number
 await open();
 const legacy = await page.evaluate(() => {
-  const w = game.world, old = w.items.filter((it) => it.name !== 'pot');
+  const w = game.world, old = w.items.slice(0, w.items.findIndex((it) => it.name === 'pot')); // what there was before the pots, and everything after them, existed
   const hay = w.beds.findIndex((b) => b.name === 'hay'), sock = old.findIndex((it) => it.name === 'sock');
   const items = old.map((it) => ({ n: it.name, r: it.region, x: +it.mesh.position.x.toFixed(2), y: +it.mesh.position.y.toFixed(2), z: +it.mesh.position.z.toFixed(2), b: -1, s: 0, a: 0 }));
   Object.assign(items[sock], { x: w.beds[hay].x + 0.4, y: 0.06, z: w.beds[hay].z + 0.4, b: hay });

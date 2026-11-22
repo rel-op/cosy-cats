@@ -791,6 +791,7 @@ function sayAt(pos, word, cooldown = 2.5) {
 // how loud something over there is from where we are looking
 const heard = (pos, range = 16) => clamp(1 - Math.hypot(pos.x - cam.target.x, pos.z - cam.target.z) / range, 0, 1);
 const CHIME = [523.25, 587.33, 659.25, 783.99, 880]; // five notes that sound well in any order
+const PIANO = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99]; // the white keys, from middle C
 world.emit = (what, pos, a, b) => {
   const near = heard(pos);
   if (what === 'plop') { audio.play('plop', { vol: 0.6 }); fx.ripple(pos); }
@@ -809,6 +810,8 @@ world.emit = (what, pos, a, b) => {
   else if (what === 'clack') { audio.note(620, { vol: 0.5 * near, decay: 0.18, wood: true }); if (near > 0.3) sayAt(pos, 'clack', 5); }
   else if (what === 'chime') { audio.note(CHIME[a], { vol: 0.28, decay: 1.7 }); sayAt(pos, 'ding', 2.5); }
   else if (what === 'knock') audio.play('tick', { vol: 0.5, rate: 0.8 });
+  else if (what === 'piano') { audio.note(PIANO[a], { vol: 0.3, decay: 1.5 }); say(b, 'plink', 4); }
+  else if (what === 'paint') { audio.play('splash', { vol: 0.2, rate: 1.6 }); say(a, 'splosh', 4); }
   else if (what === 'tock') { audio.note(240, { vol: 0.45 * near, decay: 0.11, wood: true }); if (near > 0.3) sayAt(pos, 'tock', 2); }
 };
 

@@ -52,7 +52,7 @@ Two corner icons: the moon curls up for a nap anywhere, the paw opens the cat ch
 
 - The first device to press something plays mama. A second gamepad (or the keyboard) can join at any time and takes a kitten.
 - Walk into something and keep pushing to climb it. Every cat climbs anything climbable. A kitten can still hop on mama's back for the ride, and kittens nobody is steering do that by themselves when she goes up something tall.
-- Walking into a small space (the cat flap, the cardboard box, a shed door, the hollow log) takes the whole family inside.
+- Walking into a small space (a cat flap, the cardboard box, a shed door, the hollow log) takes the whole family inside. Every house has a cat flap in its garden door, and inside each is a hallway with rooms off it.
 - Curl up together anywhere and everyone sleeps until morning.
 - The game remembers: it reopens where the family last slept, with every toy and treasure where it was left (in a bed, on the ground, wherever) and you as the same cat. Things tucked into a bed can be taken out again by walking up to them nose-first, or by tapping them. The save lives in the browser, so each device and browser has its own.
 - The "choose cats" panel changes coats, adds or removes kittens (up to four) and turns the sound words and music on or off. Nothing resets.
@@ -75,17 +75,28 @@ Nothing here is needed for anything; each just answers when a cat touches it.
 
 Five back gardens in a row, each different, joined by gaps in their fences and by a lane along the front:
 
-- **Home:** patio, cardboard box, a tree with a fork to sleep in, a log store with hay, a pond. Through the cat flap is the sitting room with a fire, a cat tree and food.
+- **Home:** patio, cardboard box, a tree with a fork to sleep in, a log store with hay, a pond.
 - **Next door, left:** an oak with a treehouse, a trampoline, a swing, a sandpit, a paddling pool and a picnic.
 - **Far left:** a koi pond with a red bridge, a tea house, bamboo and a maple.
 - **Next door, right:** vegetable beds, a greenhouse, a scarecrow, and food left out by the back door.
 - **Far right:** an overgrown garden with long grass, a potting shed, a hollow log and an upturned boat.
+
+## The houses
+
+Each house has a cat flap in its garden door. Behind it is a hallway, with doors to three or four rooms, the shut front door at the far end, and (in four of them) stairs up to a landing with a cushion. Walk into a doorway to go through; the way back to the hallway is the door in each room's left wall.
+
+- **Home (the cottage):** the sitting room with the fire, cat tree and food; a kitchen with a table to get up on and a bowl of milk; a bedroom with the big bed and a window seat; a bathroom with a bath to jump into and a rubber duck.
+- **Next door, left (the family house):** a playroom with a tent, a toy train, balls and a teddy; a room with bunk beds (the ladder goes to the top bunk) and a rocket; a laundry room with a warm dryer and a basket of washing.
+- **Far left (the timber house):** a tatami room with a quilted low table and a futon; a bath house with a steaming wooden tub; a study with scrolls, a bonsai and a low writing desk.
+- **Next door, right (the farmhouse):** a kitchen with a warm range, a dresser and a long table; a pantry of jars with flour sacks to sleep on; a sun room full of plants with a wicker chair.
+- **Far right (the old stone house):** a library with books to the ceiling and a shelf a cat fits on; a music room where walking along the piano keys plays them; a painter's studio where paint puddles leave paw prints; a bedroom with a four-poster.
 
 ## Code
 
 - `src/main.js` game loop, players, the "do" button, followers, doorways, sleeping, camera
 - `src/cat.js` the procedural cat, its coats, animation and movement
 - `src/world.js`, `src/rooms.js`, `src/props.js`, `src/critters.js` gardens, interiors, scenery pieces, wildlife
+- `src/houses.js` the insides of the five houses, built from a small kit of furniture
 - `src/toys.js` the things that do something: see-saw, swings, tap and sprinkler, stepping stone and water tipper, chimes, pots
 - `src/pixel.js` the pixel-art renderer (low-resolution render, outlines, glow, palette, iris wipes)
 - `src/build.js` shared materials and the builder that bakes scenery into a few meshes
@@ -97,6 +108,7 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 
 - `node tools/gen-audio.mjs` generates the sound effects, ambience and music with ElevenLabs (needs `ELEVENLABS_API_KEY` in `.env.local`).
 - `node tools/play.mjs <script.js>` drives the game in headless Chrome for tests and screenshots.
+- `node tools/play.mjs tools/doors-check.js` walks through every doorway in both directions.
 - `node tools/toys-check.mjs` checks the garden toys, the doves, kittens climbing, and that an older saved game still loads.
 - `node tools/save-check.mjs` checks that carried things and the chosen cat survive closing the game.
 - `node tools/app-check.mjs` checks offline play, the install row and switching to a new version, against a built copy (`npm run build`, `npm run preview`).

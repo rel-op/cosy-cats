@@ -61,7 +61,9 @@ export function buildRooms(W, scene) {
     }
   };
 
-  // ---------- home: the kitchen-sitting room behind the cat flap ----------
+  W.kit = { room, doorL, win, sunbeam, lamp, planksFloor, planksWall }; // the houses are built from the same pieces, later
+
+  // ---------- home: the sitting room, off the hallway behind the cat flap ----------
   {
     const b = room('home', { w: 9, d: 7, h: 3.2, floor: '#b98c5e', wall: '#e9dcc3', wall2: '#b9c9a8', light: { hemi: ['#ffe9c8', '#8a6a52', 0.95, 0.5], sun: ['#fff1da', 1.5, 0.3], bg: ['#2b2233', '#1b1622'] } });
     planksFloor(b, 9, 7, '#b98c5e', '#c2966a');

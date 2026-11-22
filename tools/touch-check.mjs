@@ -20,7 +20,7 @@ await page.touchscreen.tap(s.x, s.y);
 await page.waitForTimeout(2600);
 console.log('after tapping the lawn', JSON.stringify(await state()));
 await page.screenshot({ path: 'tools/out/touch-1.png' });
-const flap = await page.evaluate(() => { const p = game.world.portals.find((q) => q.to === 'home'); return game.pixel.toScreen(game.V(p.x, p.y + 0.35, p.z)); });
+const flap = await page.evaluate(() => { const p = game.world.portals.find((q) => q.to === 'homehall'); return game.pixel.toScreen(game.V(p.x, p.y + 0.35, p.z)); });
 await page.mouse.click(flap.x, flap.y);
 await page.waitForTimeout(4500);
 console.log('after clicking the cat flap', JSON.stringify(await state()));

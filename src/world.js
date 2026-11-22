@@ -4,6 +4,7 @@ import * as P from './props.js';
 import { buildRooms } from './rooms.js';
 import { buildCritters } from './critters.js';
 import { buildToys } from './toys.js';
+import { buildHouses } from './houses.js';
 
 const { C } = P;
 
@@ -62,6 +63,7 @@ export function buildWorld(scene) {
     return l;
   };
 
+  W.houseDoor = {}; // where each house's cat flap is, for its hallway to join on to
   // rooms first, so gardens can link their doors to them
   buildRooms(W, scene);
 
@@ -160,6 +162,7 @@ export function buildWorld(scene) {
   };
 
   buildToys(W, out);
+  buildHouses(W, W.kit);
   buildCritters(W, out, rand);
 
   W.setRegion = (id) => {
@@ -240,7 +243,7 @@ function home(W, b, rand, out) {
   b.box(1.22, 1.38, 2.95, 3.1, -11.0, -10.7, C.dark);
   b.ball(1.3, 2.84, -10.72, 0.16, '#ffffff', { layer: 'glow', seg: 8 });
   W.nightLight(out, b.p(1.3, 2.6, -10.1), '#ffc070', 7, 10);
-  W.link('outside', b.p(2.7, 0.12, -10.62), [0, 1], 'home', W.roomDoor.home, [1, 0], 'flap');
+  W.houseDoor.home = b.p(2.7, 0.12, -10.62);
   // window ledge with a cushion, and a crate to help a kitten up
   b.block(-5.3, -2.7, 0, 1.1, -11, -10.35, '#e6d3b3');
   b.box(-5.05, -2.95, 1.1, 1.17, -10.95, -10.42, C.pink);
@@ -318,7 +321,8 @@ function treehouseGarden(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-8.2, -3.8, -7.2, -2.8], [-4, 0.2, 5, 8], [6.2, 8.8, 4.2, 6.8], [3.9, 7.3, 0.8, 1.6]])(x, z) && pondExcl([[8, -5.5, 1.5, 1.5]])(x, z);
   P.patches(b, rand, 12, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 200, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: '#cfdde2', roof: C.slateD, style: 'clapboard', door: { x: -6.5, color: C.red, porch: C.white }, windows: [[-10.5, -8.6, 1.3, 3.0], [-3.5, -1.2, 1.3, 3.0], [6.5, 9.5, 1.3, 3.0]], shutters: C.navy, boxes: [0, 2], chimney: -1.5, pipe: 4.4, curtains: '#f6e7a8', dormers: [-5, 4], trellis: [[0.6, 2.8, C.red]], baskets: [-8.0, -5.0] });
+  P.house(b, { wall: '#cfdde2', roof: C.slateD, style: 'clapboard', door: { x: 5.2, color: C.red, porch: C.white, flap: true }, windows: [[-10.5, -8.6, 1.3, 3.0], [-3.5, -1.2, 1.3, 3.0], [6.8, 9.6, 1.3, 3.0]], shutters: C.navy, boxes: [0, 2], chimney: -1.5, pipe: 3.5, curtains: '#f6e7a8', dormers: [-5, 4], trellis: [[0.6, 2.8, C.red]], baskets: [-8.0, -5.0] });
+  W.houseDoor.play = b.p(5.2, 0, -10.62);
   // the oak and its treehouse: climb the trunk from the near side
   b.solid(1.4, 2.6, 0, 3.2, -1.6, -0.4);
   b.cyl(2, 0, 3.2, -1, 0.62, 0.8, C.bark, { seg: 9 });
@@ -378,7 +382,8 @@ function treehouseGarden(W, b, rand, out) {
   P.flowers(b, rand, -10.3, 8.5, 1.1, 14, [C.yellow, C.orange]);
   const bright = [C.red, C.yellow, C.orange, C.pink, C.white];
   P.border(b, rand, -11.5, -7.8, -10.75, -9.9, 9, ['tulip', 'rose', 'daisy', 'mound'], bright);
-  P.border(b, rand, -5.0, 11.4, -10.75, -9.9, 26, ['tulip', 'rose', 'daisy', 'mound', 'spike'], bright);
+  P.border(b, rand, -7.8, 4.0, -10.75, -9.9, 19, ['tulip', 'rose', 'daisy', 'mound', 'spike'], bright);
+  P.border(b, rand, 6.4, 11.4, -10.75, -9.9, 8, ['tulip', 'rose', 'daisy', 'mound', 'spike'], bright);
   P.border(b, rand, -11.5, -10.6, -7.5, 0.6, 10, ['mound', 'tulip', 'fern'], bright);
   P.border(b, rand, 10.5, 11.5, -3.5, 4.8, 11, ['rose', 'tulip', 'mound', 'spike'], bright);
   P.border(b, rand, -11, -3.2, 10.3, 11.1, 12, ['tulip', 'daisy', 'mound'], bright);
@@ -386,13 +391,13 @@ function treehouseGarden(W, b, rand, out) {
   P.flowers(b, rand, 10.2, 0.5, 1.0, 12, [C.pink, C.white]);
   P.bush(b, 10.4, 9.6, 0.8);
   P.tree(b, -10, -8.6, { kind: 'birch', h: 2.4, r: 0.28, bark: '#e9e4d6', leaves: [C.leafL, '#a9c765', C.leaf] });
-  P.steppingStones(b, [[-6.4, -9.2], [-5.6, -7.9], [2.6, 9.8]]);
+  P.steppingStones(b, [[5.2, -9.3], [4.9, -7.9], [2.6, 9.8]]);
   P.clutter(b, rand, 44, -11, 11, -9.5, 10.8, ok, ['daisy', 'butter', 'clover', 'daisy', 'dandelion', 'clover']);
   // bunting and lights on the treehouse
   P.stringLights(b, [-2.5, 4.0, -0.45], [2.5, 4.0, -0.45], 10, 0.3, ['#ffd98a', '#ff9a8a', '#9ad9ff', '#b9ff9a']);
   P.stringLights(b, [-12.0, 1.5, -6.5], [-12.0, 1.5, 0.5], 9, 0.25);
   for (let i = 0; i < 9; i++) b.cone(-1.9 + i * 0.3, 4.55, 4.75, -1.96, 0.1, [C.red, C.yellow, C.blue, C.white][i % 4], { seg: 3 });
-  for (const [x, z] of [[-6.9, -9.0], [-5.1, -7.4], [1.8, 9.0], [3.3, 9.3]]) P.pathLight(b, x, z);
+  for (const [x, z] of [[4.4, -9.1], [5.9, -7.6], [1.8, 9.0], [3.3, 9.3]]) P.pathLight(b, x, z);
   // a kite caught in the birch, chalk on the path, a scooter
   b.box(-9.9, -9.3, 4.6, 5.3, -8.3, -8.26, C.red, { rot: [0, 0, 0.78], layer: 'sway' }); b.beam([-9.6, 4.6, -8.3], [-9.0, 3.2, -8.0], 0.01, C.white, { seg: 3 });
   b.block(5.0, 5.15, 0, 0.8, 8.0, 8.1, C.metal, { climb: false }); b.box(4.6, 5.5, 0.05, 0.1, 7.98, 8.12, C.teal); b.box(4.85, 5.3, 0.78, 0.84, 7.9, 8.2, C.dark);
@@ -406,7 +411,8 @@ function pondGarden(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-11.6, -5.3, -4.6, 1.6], [3.6, 8.4, 5.4, 9.6], [3.8, 5.0, -4.0, -2.8], [2.1, 3.6, -5.2, -4.4]])(x, z) && pondExcl([[0.5, 2.2, 4.6, 3.1]])(x, z);
   P.patches(b, rand, 10, -11, 11, -10, 10.5, ok, [C.moss, C.grassD]);
   P.tufts(b, rand, 150, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: '#e9e2d2', roof: '#4f5d68', trim: C.barkD, base: C.stoneD, style: 'timber', windows: [[-9, -6.4, 1.2, 3.2], [-1.3, 1.3, 0.6, 3.2], [6.3, 8.8, 1.2, 3.2]], curtains: '#f6f1e4', dormers: [0] });
+  P.house(b, { wall: '#e9e2d2', roof: '#4f5d68', trim: C.barkD, base: C.stoneD, style: 'timber', door: { x: -4.3, color: '#5a7a8a', flap: true }, windows: [[-9, -6.4, 1.2, 3.2], [-1.3, 1.3, 0.6, 3.2], [6.3, 8.8, 1.2, 3.2]], curtains: '#f6f1e4', dormers: [0] });
+  W.houseDoor.koi = b.p(-4.3, 0, -10.62);
   pond(W, b, 0.5, 2.2, 4.6, 3.1, { lilies: 7, rim: C.stoneD });
   // arched bridge
   [0.16, 0.34, 0.5, 0.58, 0.5, 0.34, 0.16].forEach((h, i) => {
@@ -448,7 +454,8 @@ function pondGarden(W, b, rand, out) {
   P.rock(b, -4.6, 6.6, 0.6, C.stoneD); P.rock(b, -5.4, 7.2, 0.35); P.rock(b, 9.8, 2.4, 0.5, C.stoneD);
   P.flowers(b, rand, -8.6, 8.6, 1.2, 14, [C.purple, C.white, '#b9c7ee']);
   const calm = [C.purple, C.white, '#b9c7ee', C.pink];
-  P.border(b, rand, -5.0, 11.4, -10.75, -9.9, 22, ['fern', 'mound', 'spike', 'fern', 'grass'], calm);
+  P.border(b, rand, -3.0, 11.4, -10.75, -9.9, 20, ['fern', 'mound', 'spike', 'fern', 'grass'], calm);
+  P.steppingStones(b, [[-4.3, -9.5], [-4.8, -8.1], [-4.5, -6.7]]);
   P.border(b, rand, 10.5, 11.5, -8, 0.6, 10, ['fern', 'mound', 'spike'], calm);
   P.border(b, rand, 10.5, 11.5, 2.8, 10.8, 9, ['fern', 'grass', 'mound'], calm);
   P.border(b, rand, -11, -2.6, 10.2, 11.0, 12, ['fern', 'mound', 'spike'], calm);
@@ -470,8 +477,9 @@ function vegGarden(W, b, rand, out) {
   const ok = rectExcl([[-2.4, 2.4, -5.4, 4.4], [-11.8, -6.2, -6.8, -0.8], [-8, -4, -11, -9.4]]);
   P.patches(b, rand, 11, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 190, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: C.brick, roof: C.slateD, base: C.brickD, style: 'brick', door: { x: -6, color: '#5f8a5a', y: 0.2, porch: C.slateD }, windows: [[-1.5, 0.8, 1.4, 3.1], [5, 8, 1.4, 3.1]], shutters: C.white, boxes: [0, 1], chimney: 9.6, pipe: -9.4, dormers: [-3, 6.5], trellis: [[1.8, 4.0, C.yellow]], baskets: [-7.8] });
+  P.house(b, { wall: C.brick, roof: C.slateD, base: C.brickD, style: 'brick', door: { x: -6, color: '#5f8a5a', y: 0.2, porch: C.slateD, flap: true }, windows: [[-1.5, 0.8, 1.4, 3.1], [5, 8, 1.4, 3.1]], shutters: C.white, boxes: [0, 1], chimney: 9.6, pipe: -9.4, dormers: [-3, 6.5], trellis: [[1.8, 4.0, C.yellow]], baskets: [-7.8] });
   b.block(-7.2, -4.8, 0, 0.2, -11, -9.8, C.stone, { climb: false });
+  W.houseDoor.farm = b.p(-6, 0.2, -10.62);
   W.addBowl('food', 'outside', b.p(-4.1, 0, -10.2));
   W.addBowl('water', 'outside', b.p(-3.5, 0, -10.4));
   // raised beds
@@ -532,7 +540,7 @@ function vegGarden(W, b, rand, out) {
 
 // ---------------- the overgrown garden ----------------
 function wildGarden(W, b, rand, out) {
-  const ok = rectExcl([[-11.8, -7.2, -9.8, -5.2], [4.2, 6.8, 3.6, 8.4], [-3.8, -0.2, 4.2, 5.8], [-7.5, -6.5, 5.9, 6.9]]);
+  const ok = rectExcl([[-11.8, -7.2, -9.8, -5.2], [4.2, 6.8, 3.6, 8.4], [-3.8, -0.2, 4.2, 5.8], [-7.5, -6.5, 5.9, 6.9], [-6.1, -3.9, -11, -9.2]]);
   P.patches(b, rand, 16, -11, 11, -10, 10.5, ok, [C.moss, C.grassD, '#93b552']);
   P.tufts(b, rand, 330, -11.5, 11.5, -10.5, 11, ok);
   // long grass to wade through
@@ -543,9 +551,10 @@ function wildGarden(W, b, rand, out) {
       b.cone(x, 0, 0.5 + rand() * 0.45, z, 0.09, ['#8fb04c', '#a5c05a', '#7da243', '#b9c56a'][i % 4], { seg: 4, layer: 'sway', sway: 1.4 });
     }
   }
-  P.house(b, { wall: '#b9c0ae', roof: '#7d8a6a', base: '#9aa392', style: 'stone', door: { x: 4, color: '#7a6a5a' }, windows: [[-3, -0.5, 1.4, 3.0], [7.5, 9.8, 1.4, 3.0]], curtains: null, chimney: -8.5, smokey: false, pipe: 11.2, dormers: [3.5] });
-  for (let i = 0; i < 16; i++) b.ball(-11 + rand() * 7, 0.5 + rand() * 3.4, -10.9, 0.45 + rand() * 0.35, i % 2 ? C.leafD : C.leaf, { sz: 0.3, layer: 'sway', sway: 0.15, seg: 6 });
+  P.house(b, { wall: '#b9c0ae', roof: '#7d8a6a', base: '#9aa392', style: 'stone', door: { x: -5, color: '#7a6a5a', flap: true }, windows: [[-3, -0.5, 1.4, 3.0], [7.5, 9.8, 1.4, 3.0]], curtains: null, chimney: -8.5, smokey: false, pipe: 11.2, dormers: [3.5] });
+  for (let i = 0; i < 16; i++) b.ball(-11 + rand() * 4.6, 0.5 + rand() * 3.4, -10.9, 0.45 + rand() * 0.35, i % 2 ? C.leafD : C.leaf, { sz: 0.3, layer: 'sway', sway: 0.15, seg: 6 });
   b.box(7.4, 9.9, 1.9, 2.1, -10.92, -10.86, C.woodD, { rot: [0, 0, 0.12] }); b.box(7.4, 9.9, 2.5, 2.7, -10.92, -10.86, C.wood, { rot: [0, 0, -0.1] });
+  W.houseDoor.old = b.p(-5, 0, -10.62);
   // potting shed
   b.block(-11.7, -7.4, 0, 2.3, -9.7, -9.5, C.woodD, { climb: false }); b.block(-11.7, -11.5, 0, 2.3, -9.7, -5.4, C.woodD, { climb: false });
   b.block(-11.7, -7.4, 0, 2.3, -5.6, -5.4, C.wood, { climb: false }); b.block(-7.6, -7.4, 0, 2.3, -9.7, -8.0, C.wood, { climb: false }); b.block(-7.6, -7.4, 0, 2.3, -6.9, -5.4, C.wood, { climb: false });
@@ -583,7 +592,7 @@ function wildGarden(W, b, rand, out) {
   P.flowers(b, rand, 9, 0.2, 1.2, 14, [C.purple, C.pink]);
   const meadow = [C.purple, C.pink, C.white, C.yellow, C.red, '#b9c7ee'];
   P.border(b, rand, -11.3, 11.3, -10.6, 11, 120, ['spike', 'grass', 'daisy', 'fern', 'mound', 'daisy', 'grass'], meadow, ok);
-  P.border(b, rand, -7, 11.4, -10.75, -9.9, 16, ['fern', 'spike', 'grass', 'mound'], meadow);
+  P.border(b, rand, -3.6, 11.4, -10.75, -9.9, 14, ['fern', 'spike', 'grass', 'mound'], meadow);
   P.clutter(b, rand, 60, -11, 11, -9.5, 10.8, ok, ['mushroom', 'dandelion', 'leaf', 'pebble', 'butter', 'daisy', 'clover']);
   // a jam-jar lantern someone left, an old wheel, a forgotten boot
   b.cyl(-6.3, 0, 0.3, -4.6, 0.11, 0.11, '#ffffff', { seg: 7, layer: 'glow' }); b.cyl(-6.3, 0.3, 0.34, -4.6, 0.12, 0.12, C.metal, { seg: 7 });

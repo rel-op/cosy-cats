@@ -456,6 +456,12 @@ export function makeItem(name) {
     part(new THREE.CylinderGeometry(0.1, 0.072, 0.14, 8), C.terracotta, 0, 0, 0); part(new THREE.CylinderGeometry(0.112, 0.112, 0.03, 8), tint(C.terracotta, 0.05), 0, 0.065, 0);
     part(sph, C.leaf, 0, 0.1, 0, 0.085, 0.05, 0.085); part(sph, C.pink, 0, 0.18, 0, 0.06, 0.05, 0.06); part(sph, C.yellow, 0, 0.215, 0, 0.025); part(new THREE.CylinderGeometry(0.01, 0.01, 0.1, 4), C.leafD, 0, 0.13, 0);
     rest = 0.07;
+  } else if (name === 'duck') {
+    part(sph, '#f2d24a', 0, 0, 0, 0.1, 0.08, 0.13); part(sph, '#f2d24a', 0, 0.1, 0.08, 0.07); part(sph, C.orange, 0, 0.09, 0.16, 0.035, 0.02, 0.04); part(sph, '#f2d24a', 0, 0.04, -0.13, 0.05, 0.04, 0.05);
+    part(sph, C.dark, 0.04, 0.12, 0.12, 0.014); part(sph, C.dark, -0.04, 0.12, 0.12, 0.014); rest = 0.08;
+  } else if (name === 'teddy') {
+    part(sph, '#b98a5a', 0, 0, 0, 0.1, 0.11, 0.09); part(sph, '#b98a5a', 0, 0.16, 0, 0.085); part(sph, '#b98a5a', 0.065, 0.24, 0, 0.032); part(sph, '#b98a5a', -0.065, 0.24, 0, 0.032);
+    part(sph, '#e8d2a8', 0, 0.14, 0.07, 0.04, 0.035, 0.03); part(sph, '#b98a5a', 0.11, 0.02, 0.03, 0.04, 0.04, 0.07); part(sph, '#b98a5a', -0.11, 0.02, 0.03, 0.04, 0.04, 0.07); part(sph, C.red, 0, 0.09, 0.03, 0.09, 0.02, 0.08); rest = 0.1;
   } else if (name === 'mitten') {
     part(sph, C.yellow, 0, 0, 0, 0.09, 0.05, 0.13); part(sph, C.yellow, 0.09, 0, 0.02, 0.04, 0.04, 0.06); part(sph, C.white, 0, 0, -0.12, 0.09, 0.055, 0.04); rest = 0.05;
   }
