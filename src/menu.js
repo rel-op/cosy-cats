@@ -12,8 +12,8 @@ export class Menu {
   rows() {
     const a = this.api, cats = a.cats();
     const rows = cats.map((c, i) => ({ label: i === 0 ? 'mama' : `kitten ${i}`, value: c.coat.name, swatch: c.coat, turn: (d) => { const k = (COATS.indexOf(c.coat) + d + COATS.length) % COATS.length; a.setCoat(i, COATS[k].id); } }));
-    if (cats.length < 5) rows.push({ label: 'add a kitten', plain: true, press: () => a.addKitten() });
-    if (cats.length > 2) rows.push({ label: 'one fewer kitten', plain: true, press: () => a.removeKitten() });
+    if (cats.length < 5) rows.push({ label: 'add a kitten', plain: true, press: () => { a.addKitten(); this.row++; } });
+    if (cats.length > 2) rows.push({ label: 'one fewer kitten', plain: true, press: () => { a.removeKitten(); this.row--; } });
     rows.push({ label: 'sound words', value: a.settings.words ? 'on' : 'off', turn: () => { a.settings.words = !a.settings.words; } });
     rows.push({ label: 'music', value: a.settings.music ? 'on' : 'off', turn: () => { a.settings.music = !a.settings.music; } });
     rows.push({ label: 'back to the garden', plain: true, press: () => this.toggle(false) });

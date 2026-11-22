@@ -16,6 +16,7 @@ import { Menu } from './menu.js';
 
 const params = new URLSearchParams(location.search);
 const CAPTURE = params.has('capture'); // trailer mode: stepped by hand, silent, no saved game
+if (CAPTURE) document.body.classList.add('capture');
 
 // ---------- saved choices ----------
 const SAVE_KEY = 'cosy-cats-save-1';
@@ -42,6 +43,8 @@ function spawn(kind, coatId, at) {
   const c = new Cat(kind, coatById(coatId), cats.length);
   c.pos.copy(at);
   c.visY = c.support = at.y;
+  c.trail = [];
+  c.trailN = 0;
   scene.add(c.group, c.blob);
   cats.push(c);
   return c;
@@ -216,10 +219,6 @@ function doAction(cat) {
   if (bowl) return eat(cat, bowl);
   if (!bed && mama.state === 'free' && mama.grounded) {
     if (cat.isKitten && flat(cat, mama) < 1.1 && Math.abs(cat.pos.y - mama.pos.y) < 0.5) return mount(cat);
-    if (cat === mama) {
-      const k = cats.find((c) => c.isKitten && c.state === 'free' && c.grounded && flat(c, mama) < 1.1 && Math.abs(c.pos.y - mama.pos.y) < 0.5);
-      if (k) return mount(k);
-    }
   }
   curlUp(cat);
 }
@@ -272,13 +271,10 @@ const napLead = () => { const p = players.find((q) => q.human && q.cat.state ===
 
 function leaderOf(cat) {
   if (cat === mama) { const p = players.find((q) => q.human && q.cat !== mama); return p ? (p.cat.state === 'ride' ? null : p.cat) : null; }
-  let prev = mama;
-  for (const c of cats) {
-    if (c === cat) break;
-    if (c !== mama && !isHuman(c) && c.state === 'free') prev = c;
-  }
-  return prev;
+  return mama;
 }
+// where a kitten walks in the line behind mama: 0 is first
+const rankOf = (cat) => cats.filter((c) => c.isKitten && !isHuman(c) && c.state !== 'ride').indexOf(cat);
 
 function ai(cat, dt, idx) {
   const a = aiState(cat);
@@ -326,32 +322,63 @@ function ai(cat, dt, idx) {
   if (!lead) return cat.physics(dt, 0, 0, false, world);
   const dx = lead.pos.x - cat.pos.x, dz = lead.pos.z - cat.pos.z, dy = lead.pos.y - cat.pos.y;
   const d = Math.hypot(dx, dz);
-  // called over: run, and if that fails, bound across
+  const catchUp = () => {
+    const s = besideSpot(lead, cat, idx) || [lead.pos.x, lead.pos.y, lead.pos.z];
+    fx.poof(cat.pos.clone());
+    cat.teleport(s[0], s[1], s[2]);
+    fx.poof(V(s[0], s[1], s[2]));
+    a.ptr = lead.trailN;
+    a.skips = 0;
+  };
+  if (a.jump) { a.jump = false; cat.physics(dt, Math.sin(cat.yaw) * cat.speed, Math.cos(cat.yaw) * cat.speed, true, world); return; }
+  const leadOk = lead.state === 'free' && lead.grounded;
+  // called over: run straight there, and if that fails, bound across
   if (a.summon > 0) {
     a.summon -= dt;
     if (d < 1.3 && Math.abs(dy) < 0.6) a.summon = 0;
-    else if (a.summon <= 0 && lead.state === 'free' && lead.grounded && d > 2.5) {
-      const s = besideSpot(lead, cat, idx) || [lead.pos.x, lead.pos.y, lead.pos.z];
-      fx.poof(cat.pos.clone());
-      cat.teleport(s[0], s[1], s[2]);
-      fx.poof(V(s[0], s[1], s[2]));
-      return;
-    }
+    else if (a.summon <= 0 && leadOk && d > 2.5) return catchUp();
+    else if (d > 1.0) { a.ptr = lead.trailN; return cat.physics(dt, (dx / d) * cat.speed * 1.2, (dz / d) * cat.speed * 1.2, false, world); }
   }
-  const called = a.summon > 0;
-  if (d > (called ? 1.0 : 1.9)) a.moving = true;
-  else if (d < (called ? 0.9 : 1.15)) a.moving = false;
-  const tooHigh = cat.isKitten && dy > cat.climbMax && d < 2.5;
-  if (a.jump) { a.jump = false; cat.physics(dt, Math.sin(cat.yaw) * cat.speed, Math.cos(cat.yaw) * cat.speed, true, world); return; }
-  if (a.moving && !tooHigh) {
-    const f = d > 4 || called ? 1.2 : 1.0;
-    cat.physics(dt, (dx / d) * cat.speed * f, (dz / d) * cat.speed * f, false, world);
+  if (d > 13 && leadOk) return catchUp();
+  // otherwise follow in the leader's footsteps, which is how kittens end up trailing in a line
+  if (a.lead !== lead) { a.lead = lead; a.ptr = lead.trailN; }
+  const tr = lead.trail, first = lead.trailN - tr.length, keep = 3 + (cat.isKitten ? Math.max(0, rankOf(cat)) * 2 : 0);
+  if (a.ptr < first) a.ptr = first;
+  let crumb = null;
+  while (a.ptr < lead.trailN - keep) {
+    const c = tr[a.ptr - first];
+    if (Math.hypot(c.x - cat.pos.x, c.z - cat.pos.z) < 0.4 && Math.abs(c.y - cat.pos.y) < 1.0) { a.ptr++; a.stuck = 0; } else { crumb = c; break; }
+  }
+  const tooHigh = cat.isKitten && d < 3 && (dy > cat.climbMax || (crumb && crumb.y - cat.pos.y > cat.climbMax));
+  // far behind for a while, or mama is up somewhere a kitten can't reach: scamper to catch up, or hop on
+  const behindBy = lead.trailN - a.ptr - keep;
+  a.lagT = behindBy > 6 || (tooHigh && leadOk) ? (a.lagT || 0) + dt : 0;
+  if (a.lagT > (tooHigh ? 1.2 : 5) && leadOk) {
+    a.lagT = 0;
+    if (tooHigh && lead === mama) { fx.poof(cat.pos.clone(), 4); return mount(cat); }
+    return catchUp();
+  }
+  if (behindBy > 30 && leadOk) return catchUp();
+  if (crumb && !tooHigh && cat.state === 'free') {
+    const cx = crumb.x - cat.pos.x, cz = crumb.z - cat.pos.z, cd = Math.hypot(cx, cz) + 0.001;
+    const behind = lead.trailN - a.ptr;
+    const f = behind > 9 ? 1.3 : behind > 5 ? 1.12 : 0.98;
+    const px = cat.pos.x, pz = cat.pos.z;
+    cat.allowClimb = crumb.y - cat.pos.y > 0.15; // only climb when the trail really goes up
+    cat.physics(dt, (cx / cd) * cat.speed * f, (cz / cd) * cat.speed * f, false, world);
+    cat.allowClimb = true;
+    // not getting anywhere: skip a step, and after a few tries just bound over
+    const moved = Math.hypot(cat.pos.x - px, cat.pos.z - pz);
+    a.stuck = cat.state === 'free' && moved < cat.speed * dt * 0.35 ? (a.stuck || 0) + dt : 0;
+    if (a.stuck > 0.8) { a.stuck = 0; a.ptr++; }
     a.playT = Math.max(a.playT, 2);
+  } else if (cat.state === 'climb') {
+    cat.physics(dt, -cat.climbN.x * cat.speed, -cat.climbN.z * cat.speed, false, world);
   } else {
     cat.physics(dt, 0, 0, false, world);
     if (d > 0.4 && cat.state === 'free' && cat.pounce <= 0) cat.yaw = dampAngle(cat.yaw, Math.atan2(dx, dz), 4, dt);
     // kittens amuse themselves: a wiggle, then a pounce at nothing much
-    if (cat.isKitten && cat.grounded && !tooHigh) {
+    if (cat.isKitten && cat.grounded && !tooHigh && d < 3) {
       a.playT -= dt;
       if (a.playT <= 0) { a.playT = 7 + Math.random() * 12; cat.pounce = 0.7; cat.yaw += (Math.random() - 0.5) * 2.4; a.pounceAt = time + 0.6; }
       if (a.pounceAt && time > a.pounceAt) { a.pounceAt = 0; a.jump = true; }
@@ -399,7 +426,8 @@ function arrive(p, lead) {
     c.grounded = true;
     c.support = spot[1];
     if (c.held) c.held.region = p.to;
-    if (c.ai) c.ai.summon = 0;
+    if (c.ai) { c.ai.summon = 0; c.ai.lead = null; }
+    c.trail.length = 0;
   }
   camSnap = true;
   portalCd = 0.7;
@@ -488,7 +516,7 @@ function roomView(r) {
 }
 function updateCamera(dt) {
   const r = region();
-  const base = pixel.view.y / 9.6;
+  const base = pixel.view.y / 8.2;
   let want = V(0, 0, 0), ppu = base;
   if (debug.cam) {
     want.set(debug.cam.x, debug.cam.y ?? 0.5, debug.cam.z);
@@ -650,6 +678,7 @@ function step(dt) {
         }
       }
       cats.forEach((c, i) => {
+        c.useLatch = isHuman(c) || c.driven;
         if (!isHuman(c) && !c.driven && players.length) ai(c, dt, i);
         c.driven = false;
       });
@@ -670,6 +699,16 @@ function step(dt) {
   updateTransition(dt);
 
   for (const k of mama.riders) k.mount.riderAnchors[mama.riders.indexOf(k) % 4].getWorldPosition(k.pos);
+
+  // every cat leaves a trail of footsteps for whoever is following it
+  for (const c of cats) {
+    const last = c.trail[c.trail.length - 1];
+    if (c.state === 'free' && c.grounded && (!last || Math.hypot(last.x - c.pos.x, last.z - c.pos.z) > 0.4 || Math.abs(last.y - c.pos.y) > 0.3)) {
+      c.trail.push({ x: c.pos.x, y: c.pos.y, z: c.pos.z });
+      c.trailN++;
+      if (c.trail.length > 60) c.trail.shift();
+    }
+  }
 
   for (const c of cats) {
     if (c.state === 'eat') {

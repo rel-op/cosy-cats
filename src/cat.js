@@ -64,6 +64,8 @@ export class Cat {
     this.climbing = false;
     this.scrabble = 0;
     this.latch = null;
+    this.useLatch = true; // people get the pause after a climb; cats on autopilot don't need it
+    this.allowClimb = true;
 
     this.held = null;
     this.riders = [];
@@ -390,7 +392,7 @@ export class Cat {
         this.climbIntent = 0;
       } else if (square) {
         this.climbIntent += dt;
-        if (this.climbIntent > 0.14) this.startClimb(blocker, bnx, bnz);
+        if (this.climbIntent > 0.14 && this.allowClimb) this.startClimb(blocker, bnx, bnz);
       }
     } else {
       this.climbIntent = 0;
@@ -454,7 +456,7 @@ export class Cat {
       this.support = c.y1;
       this.grounded = true;
       this.setState('free');
-      this.latch = { x: -n.x, z: -n.z, t: 2.5 };
+      this.latch = this.useLatch ? { x: -n.x, z: -n.z, t: 2.5 } : null;
       this.events.push('top');
     }
   }
