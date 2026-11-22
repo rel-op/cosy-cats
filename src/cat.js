@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toon } from './build.js';
+import { fur as toon } from './build.js';
 
 const G = 14;
 const TAU = Math.PI * 2;

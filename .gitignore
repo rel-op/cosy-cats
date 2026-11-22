@@ -5,3 +5,5 @@ dist
 .env.local
 .env.*.local
 tools/audio-raw
+tools/out
+trailer-frames

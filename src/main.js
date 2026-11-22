@@ -65,6 +65,7 @@ const isHuman = (cat) => players.some((p) => p.cat === cat && p.human);
 const toastEl = document.getElementById('toast');
 let toastTimer = 0;
 function toast(text) {
+  if (CAPTURE) return;
   toastEl.textContent = text;
   toastEl.classList.add('show');
   clearTimeout(toastTimer);
@@ -761,4 +762,4 @@ pixel.resize();
 if (CAPTURE) { step(1 / 60); render(); } else requestAnimationFrame(frame);
 
 // handy for poking at things from the console, for tests and for filming the trailer
-window.game = { debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };
+window.game = { snap: () => { camSnap = true; }, join, debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };

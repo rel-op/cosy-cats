@@ -4,7 +4,7 @@ import { toon, tint } from './build.js';
 // Reusable scenery pieces. Each takes a Builder `b` and local coordinates.
 
 export const C = {
-  grass: '#86b34d', grassD: '#74a544', grassL: '#9cc45a', moss: '#5f8f3a',
+  grass: '#7fae46', grassD: '#6f9f40', grassL: '#98c458', moss: '#5f8f3a',
   leaf: '#4f9140', leafD: '#3b7a3a', leafL: '#74ad4a', pine: '#2f6b4a',
   earth: '#8a5a44', soil: '#6e4a3a', bark: '#7a4e3a', barkD: '#5e3b2e',
   wood: '#b88558', woodD: '#96693f', woodL: '#d2a373', plank: '#c4935f',
@@ -15,31 +15,275 @@ export const C = {
   water: '#6fb3d2', waterD: '#4f8fba', waterL: '#a4dddb', sand: '#e6cf9c', hay: '#e3c86f',
   card: '#c9a26b', cardD: '#b08a56', metal: '#8f9aa3', dark: '#3d4450',
 };
-
-export function house(b, { wall = C.cream, roof = C.terracotta, trim = C.white, door = null, windows = [], x0 = -12, x1 = 12, h = 5.4, base = '#dccfb2' } = {}) {
-  b.block(x0, x1, 0, h, -12.4, -11, wall, { climb: false });
-  b.box(x0, x1, 0, 0.4, -11.06, -10.94, base);
-  b.box(x0 - 0.05, x1 + 0.05, h, h + 0.5, -12.5, -10.6, roof);
-  b.box(x0 - 0.05, x1 + 0.05, h + 0.5, h + 0.75, -12.5, -11.1, tint(roof, -0.06));
-  for (const [wx0, wx1, wy0, wy1] of windows) {
-    b.box(wx0, wx1, wy0, wy1, -11.07, -10.92, trim);
-    b.box(wx0 + 0.14, wx1 - 0.14, wy0 + 0.14, wy1 - 0.14, -11.0, -10.9, '#ffffff', { layer: 'glow' });
-    const mx = (wx0 + wx1) / 2, my = (wy0 + wy1) / 2;
-    b.box(mx - 0.04, mx + 0.04, wy0 + 0.14, wy1 - 0.14, -10.95, -10.88, trim);
-    b.box(wx0 + 0.14, wx1 - 0.14, my - 0.04, my + 0.04, -10.95, -10.88, trim);
-    b.box(wx0 - 0.08, wx1 + 0.08, wy0 - 0.1, wy0, -11.05, -10.82, trim);
-  }
-  if (door) {
-    const { x, color = C.teal, flap = false, y = 0 } = door;
-    b.box(x - 0.85, x + 0.85, y, y + 2.95, -11.07, -10.93, trim);
-    b.box(x - 0.7, x + 0.7, y, y + 2.8, -11.05, -10.9, color);
-    b.box(x - 0.5, x + 0.5, y + 1.5, y + 2.5, -11.0, -10.88, tint(color, -0.08));
-    if (flap) b.box(x - 0.3, x + 0.3, y + 0.08, y + 0.6, -11.0, -10.86, tint(color, -0.18));
-    b.ball(x + 0.5, y + 1.4, -10.86, 0.06, C.yellow);
+// a clump of foliage: one big ball with smaller light and dark clusters over it
+export function leafy(b, x, y, z, r, cols, { sy = 0.9, sway = 0.5, n = 10, seg = 8 } = {}) {
+  const [mid, light, dark] = cols;
+  b.ball(x, y, z, r, mid, { sy, layer: 'sway', sway, seg: seg + 1 });
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n, phi = Math.acos(1 - 2 * t), th = i * 2.399963 + x;
+    const dx = Math.sin(phi) * Math.cos(th), dy = Math.cos(phi), dz = Math.sin(phi) * Math.sin(th);
+    const lit = dy * 0.75 - dx * 0.35 + dz * 0.3; // sun from the upper left
+    const c = lit > 0.3 ? light : lit < -0.12 ? dark : mid;
+    b.ball(x + dx * r * 0.76, y + dy * r * 0.76 * sy, z + dz * r * 0.76, r * (0.36 + ((i * 7) % 5) * 0.03), c, { sy: 0.92, layer: 'sway', sway, seg: 6 });
   }
 }
 
-// A boundary running along z at a fixed x. `gaps` are [z0, z1] openings.
+export function house(b, { wall = C.cream, roof = C.terracotta, trim = C.white, door = null, windows = [], x0 = -12, x1 = 12, h = 5.4, base = '#dccfb2', style = 'plaster', shutters = null, boxes = [], chimney = null, pipe = null, curtains = '#e7c9a0', smokey = true } = {}) {
+  b.block(x0, x1, 0, h, -12.4, -11, wall, { climb: false });
+  b.box(x0, x1, 0, 0.42, -11.07, -10.93, base);
+  b.box(x0, x1, 0.42, 0.47, -11.08, -10.92, tint(base, 0.06));
+  if (style === 'clapboard') {
+    for (let y = 0.8; y < h - 0.2; y += 0.38) b.box(x0, x1, y, y + 0.035, -11.04, -10.975, tint(wall, -0.08));
+  } else if (style === 'brick') {
+    for (let y = 0.55, r = 0; y < h - 0.15; y += 0.3, r++) for (let x = x0 + (r % 2) * 0.55; x < x1 - 0.5; x += 1.1) b.box(x, x + 0.52, y, y + 0.15, -11.025, -10.985, (Math.round(x * 3) + r) % 3 ? tint(wall, -0.05) : tint(wall, 0.05));
+  } else if (style === 'timber') {
+    for (let x = x0; x <= x1; x += 3) b.box(x - 0.12, x + 0.12, 0.47, h, -11.05, -10.95, trim);
+    for (const y of [2.0, 3.55]) b.box(x0, x1, y - 0.1, y + 0.1, -11.05, -10.95, trim);
+  } else if (style === 'stone') {
+    for (let y = 0.6, r = 0; y < h - 0.3; y += 0.55, r++) for (let x = x0 + (r % 2) * 0.8 + 0.2; x < x1 - 1; x += 1.9) b.box(x, x + 1.1 + (r % 3) * 0.2, y, y + 0.36, -11.03, -10.985, (Math.round(x) + r) % 2 ? tint(wall, -0.06) : tint(wall, 0.04));
+  } else {
+    for (let i = 0; i < 9; i++) { const x = x0 + 1.5 + ((i * 7.3) % (x1 - x0 - 3)), y = 0.8 + ((i * 2.9) % (h - 1.6)); b.box(x, x + 0.9 + (i % 3) * 0.5, y, y + 0.22 + (i % 2) * 0.2, -11.02, -10.99, tint(wall, i % 2 ? -0.04 : 0.035)); }
+  }
+  // roof: rows of tiles stepping up and back
+  for (let i = 0; i < 6; i++) {
+    const y = h + i * 0.36, zf = -10.5 - i * 0.55;
+    b.box(x0 - 0.15, x1 + 0.15, y, y + 0.4, zf - 2.1, zf, i % 2 ? roof : tint(roof, -0.045));
+    for (let x = x0 - 0.1 + (i % 2) * 0.3; x < x1; x += 0.6) b.box(x, x + 0.5, y + 0.4, y + 0.44, zf - 0.5, zf + 0.03, tint(roof, 0.05));
+    b.box(x0 - 0.15, x1 + 0.15, y - 0.03, y + 0.03, zf - 0.02, zf + 0.04, tint(roof, -0.14));
+  }
+  b.box(x0 - 0.2, x1 + 0.2, h - 0.13, h, -10.62, -10.42, trim);
+  if (pipe !== null) { b.box(pipe - 0.07, pipe + 0.07, 0, h - 0.1, -10.98, -10.84, trim); b.box(pipe - 0.1, pipe + 0.1, 1.6, 1.68, -11.0, -10.82, tint(trim, -0.12)); b.box(pipe - 0.1, pipe + 0.1, 3.6, 3.68, -11.0, -10.82, tint(trim, -0.12)); }
+  if (chimney !== null) {
+    b.box(chimney - 0.55, chimney + 0.55, h + 1.0, h + 3.4, -14.6, -13.5, C.brick);
+    b.box(chimney - 0.62, chimney + 0.62, h + 3.4, h + 3.55, -14.67, -13.43, C.brickD);
+    b.cyl(chimney - 0.2, h + 3.55, h + 3.95, -14.05, 0.16, 0.2, C.terracotta, { seg: 7 });
+    b.cyl(chimney + 0.25, h + 3.55, h + 3.85, -14.05, 0.14, 0.18, C.terracotta, { seg: 7 });
+    if (smokey) smoke(b, chimney - 0.2, h + 4.0, -14.05);
+  }
+  windows.forEach(([wx0, wx1, wy0, wy1], wi) => {
+    b.box(wx0 - 0.06, wx1 + 0.06, wy0 - 0.06, wy1 + 0.1, -11.08, -10.91, trim);
+    b.box(wx0 + 0.12, wx1 - 0.12, wy0 + 0.12, wy1 - 0.12, -11.0, -10.9, '#ffffff', { layer: 'glow' });
+    const mx = (wx0 + wx1) / 2, my = (wy0 + wy1) / 2;
+    b.box(mx - 0.04, mx + 0.04, wy0 + 0.12, wy1 - 0.12, -10.95, -10.88, trim);
+    b.box(wx0 + 0.12, wx1 - 0.12, my - 0.04, my + 0.04, -10.95, -10.88, trim);
+    b.box(wx0 - 0.12, wx1 + 0.12, wy0 - 0.14, wy0 - 0.04, -11.05, -10.8, trim);
+    if (curtains) { b.box(wx0 + 0.12, wx0 + 0.34, wy0 + 0.12, wy1 - 0.12, -10.93, -10.89, curtains); b.box(wx1 - 0.34, wx1 - 0.12, wy0 + 0.12, wy1 - 0.12, -10.93, -10.89, curtains); }
+    if (shutters) for (const sx of [wx0 - 0.42, wx1 + 0.08]) { b.box(sx, sx + 0.34, wy0, wy1, -11.04, -10.92, shutters); for (let y = wy0 + 0.15; y < wy1 - 0.1; y += 0.22) b.box(sx + 0.04, sx + 0.3, y, y + 0.05, -10.93, -10.9, tint(shutters, -0.1)); }
+    if (boxes.includes(wi)) {
+      b.box(wx0 - 0.05, wx1 + 0.05, wy0 - 0.5, wy0 - 0.14, -11.0, -10.66, C.woodD);
+      for (let x = wx0 + 0.15, k = 0; x < wx1; x += 0.34, k++) { b.ball(x, wy0 - 0.06, -10.8, 0.17, k % 2 ? C.leaf : C.leafL, { layer: 'sway', sway: 0.3, seg: 6 }); b.ball(x + 0.05, wy0 + 0.07, -10.74, 0.085, [C.red, C.pink, C.yellow, C.white][(k + wi) % 4], { layer: 'sway', sway: 0.3, seg: 5 }); }
+    }
+  });
+  if (door) {
+    const { x, color = C.teal, flap = false, y = 0, porch = false } = door;
+    b.box(x - 0.9, x + 0.9, y, y + 3.0, -11.08, -10.92, trim);
+    b.box(x - 0.72, x + 0.72, y, y + 2.82, -11.05, -10.9, color);
+    b.box(x - 0.52, x + 0.52, y + 1.55, y + 2.55, -11.0, -10.885, tint(color, -0.08));
+    b.box(x - 0.42, x + 0.42, y + 1.65, y + 2.45, -10.98, -10.88, '#ffffff', { layer: 'glow' });
+    b.box(x - 0.03, x + 0.03, y + 1.65, y + 2.45, -10.95, -10.87, tint(color, -0.08));
+    b.box(x - 0.52, x + 0.52, y + 0.25, y + 1.3, -11.0, -10.885, tint(color, -0.06));
+    if (flap) b.box(x - 0.3, x + 0.3, y + 0.08, y + 0.62, -11.0, -10.86, tint(color, -0.2));
+    b.ball(x + 0.52, y + 1.42, -10.86, 0.065, C.yellow, { seg: 6 });
+    b.box(x - 0.7, x + 0.7, y, y + 0.025, -10.9, -10.1, '#a8744f');
+    b.box(x - 0.6, x + 0.6, y + 0.025, y + 0.03, -10.8, -10.2, '#c08c62');
+    if (porch) { b.box(x - 1.2, x + 1.2, y + 3.1, y + 3.25, -11.0, -10.0, porch); b.box(x - 1.25, x + 1.25, y + 3.25, y + 3.34, -11.0, -9.95, tint(porch, -0.08)); }
+  }
+}
+
+// lazy chimney smoke
+export function smoke(b, x, y, z) {
+  const puffs = [];
+  const geo = new THREE.SphereGeometry(1, 7, 5);
+  for (let i = 0; i < 6; i++) {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#f1ece2', transparent: true, opacity: 0, depthWrite: false }));
+    b.dyn(m, x, y, z);
+    puffs.push(m);
+  }
+  const p0 = b.p(x, y, z);
+  b.world.updaters.push((dt, t) => {
+    puffs.forEach((m, i) => {
+      const k = (t * 0.16 + i / 6) % 1;
+      m.position.set(p0.x + k * 1.6 + Math.sin(t + i) * 0.1, p0.y + k * 2.6, p0.z - k * 0.4);
+      m.scale.setScalar(0.18 + k * 0.5);
+      m.material.opacity = Math.sin(k * Math.PI) * 0.6;
+    });
+  });
+}
+
+export function tree(b, x, z, { h = 2.6, r = 0.5, kind = 'round', leaves = [C.leaf, C.leafL, C.leafD], scale = 1, bark = C.bark, climb = true } = {}) {
+  b.solid(x - r, x + r, 0, h, z - r, z + r, { climb });
+  b.cyl(x, 0, h, z, r * 1.05, r * 1.3, bark, { seg: 9 });
+  for (let i = 0; i < 4; i++) { const a = i * 1.7 + x; b.ball(x + Math.cos(a) * r * 1.25, 0.05, z + Math.sin(a) * r * 1.25, r * 0.5, bark, { sy: 0.6, seg: 6 }); }
+  b.box(x + r * 0.9, x + r * 1.12, h * 0.3, h * 0.5, z - r * 0.3, z + r * 0.2, tint(bark, -0.08));
+  const top = h;
+  if (kind === 'round' || kind === 'apple' || kind === 'maple') {
+    const blobs = [[-1.4, 2.0, -1.0, 1.6], [0.2, 2.7, -1.3, 1.5], [-1.8, 1.7, 0.8, 1.3], [1.3, 1.9, -0.9, 1.2], [-0.7, 3.1, 0.1, 1.3]];
+    blobs.forEach(([dx, dy, dz, br], i) => {
+      const s = scale;
+      leafy(b, x + dx * s, top + dy * s, z + dz * s, br * s, [tint(leaves[0], (i % 3 - 1) * 0.025), leaves[1], leaves[2]], { sway: 0.5, n: 11 });
+      b.beam([x, top - 0.2, z], [x + dx * s, top + dy * s - br * s * 0.5, z + dz * s], 0.12, bark);
+      if (kind === 'apple') for (let a = 0; a < 4; a++) b.ball(x + dx * s + Math.cos(a * 2.1 + i) * br * s * 0.85, top + dy * s - br * s * 0.2 + (a % 2) * 0.3, z + dz * s + Math.abs(Math.sin(a * 2.1 + i)) * br * s * 0.9, 0.1, C.red, { seg: 6 });
+    });
+  } else if (kind === 'pine') {
+    for (let i = 0; i < 4; i++) {
+      const y0 = top - 0.6 + i * 0.95 * scale, rr = (1.7 - i * 0.36) * scale;
+      b.cone(x, y0, y0 + 1.9 * scale, z, rr, i % 2 ? C.pine : tint(C.pine, 0.05), { layer: 'sway', sway: 0.2, seg: 8 });
+      for (let a = 0; a < 7; a++) b.ball(x + Math.cos(a * 0.9 + i) * rr * 0.8, y0 + 0.15, z + Math.sin(a * 0.9 + i) * rr * 0.8, 0.24 * scale, a % 2 ? tint(C.pine, 0.09) : tint(C.pine, -0.04), { sy: 0.6, layer: 'sway', sway: 0.2, seg: 5 });
+    }
+  } else if (kind === 'willow') {
+    leafy(b, x - 0.3, top + 1.4, z - 0.3, 2.0 * scale, leaves, { sy: 0.7, sway: 0.5, n: 12 });
+    for (let a = 0; a < 13; a++) {
+      const ang = (a / 13) * Math.PI * 2;
+      for (let k = 0; k < 4; k++) b.ball(x - 0.3 + Math.cos(ang) * 1.75 * scale, top + 1.1 - k * 0.42, z - 0.3 + Math.sin(ang) * 1.75 * scale, 0.3 - k * 0.03, leaves[(a + k) % leaves.length], { sy: 1.25, layer: 'sway', sway: 0.9 + k * 0.4, seg: 5 });
+    }
+  } else if (kind === 'birch') {
+    for (const [dx, dy, dz, br] of [[-0.5, 1.2, -0.4, 1.0], [0.4, 2.0, -0.6, 0.9], [-0.2, 2.8, 0.1, 0.8]]) leafy(b, x + dx, top + dy, z + dz, br * scale, leaves, { sy: 1.1, sway: 0.7, n: 8 });
+    for (let i = 0; i < 4; i++) b.box(x - r * 1.15, x + r * 1.15, 0.4 + i * 0.6, 0.48 + i * 0.6, z - r * 1.15, z + r * 1.15, C.dark);
+  }
+  return top;
+}
+
+export function bush(b, x, z, r = 0.8, colors = [C.leaf, C.leafL, C.leafD], { solid = true, berries = null } = {}) {
+  if (solid) b.solid(x - r * 0.75, x + r * 0.75, 0, r * 1.1, z - r * 0.75, z + r * 0.75, { climb: false });
+  leafy(b, x, r * 0.6, z, r, colors, { sy: 0.85, sway: 0.3, n: 8 });
+  leafy(b, x + r * 0.55, r * 0.45, z + r * 0.35, r * 0.65, colors, { sway: 0.3, n: 5 });
+  leafy(b, x - r * 0.5, r * 0.5, z + r * 0.4, r * 0.6, colors, { sway: 0.3, n: 5 });
+  if (berries) for (let i = 0; i < 9; i++) b.ball(x + Math.cos(i * 1.9) * r * 0.9, r * 0.55 + Math.sin(i * 2.7) * r * 0.35, z + Math.abs(Math.sin(i * 1.9)) * r * 0.95, 0.075, berries, { seg: 5 });
+}
+
+export function flowers(b, rand, x, z, r, n, colors = [C.pink, C.yellow, C.white, C.purple, C.orange]) {
+  for (let i = 0; i < n; i++) {
+    const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * r;
+    const fx = x + Math.cos(a) * d, fz = z + Math.sin(a) * d, h = 0.2 + rand() * 0.24;
+    b.box(fx - 0.015, fx + 0.015, 0, h, fz - 0.015, fz + 0.015, C.leafD, { layer: 'sway' });
+    b.ball(fx + 0.05, h * 0.45, fz, 0.06, C.leaf, { sy: 0.5, layer: 'sway', sway: 0.4, seg: 5 });
+    b.ball(fx, h, fz, 0.09, colors[Math.floor(rand() * colors.length)], { sy: 0.7, layer: 'sway', sway: 0.6, seg: 6 });
+    b.ball(fx, h + 0.03, fz + 0.02, 0.035, C.yellow, { layer: 'sway', sway: 0.6, seg: 4 });
+  }
+}
+
+// one garden plant. kinds: spike, mound, rose, grass, tulip, fern, daisy, sunflower
+export function plant(b, rand, x, z, kind, colors = [C.purple, C.pink, C.blue, C.white, C.yellow, C.red]) {
+  const col = () => colors[Math.floor(rand() * colors.length)];
+  const greens = [[C.leaf, C.leafL, C.leafD], ['#5d9a48', '#7fb558', '#44803c'], [C.moss, '#7fa348', '#4a7a30']][Math.floor(rand() * 3)];
+  if (kind === 'spike') {
+    const n = 2 + Math.floor(rand() * 3), c = col();
+    b.ball(x, 0.1, z, 0.2, greens[2], { sy: 0.6, layer: 'sway', sway: 0.3, seg: 6 });
+    for (let i = 0; i < n; i++) {
+      const sx = x + (rand() - 0.5) * 0.3, sz = z + (rand() - 0.5) * 0.3, h = 0.45 + rand() * 0.6;
+      b.box(sx - 0.012, sx + 0.012, 0, h, sz - 0.012, sz + 0.012, greens[2], { layer: 'sway' });
+      for (let k = 0; k < 4; k++) b.ball(sx, h * (0.5 + k * 0.17), sz, 0.085 - k * 0.012, k === 3 ? tint(c, 0.08) : c, { sy: 1.25, layer: 'sway', sway: 0.9, seg: 5 });
+    }
+  } else if (kind === 'mound') {
+    const r = 0.26 + rand() * 0.22;
+    leafy(b, x, r * 0.55, z, r, greens, { sy: 0.8, sway: 0.3, n: 6 });
+  } else if (kind === 'rose') {
+    const r = 0.34 + rand() * 0.16, c = col();
+    leafy(b, x, r * 0.7, z, r, greens, { sway: 0.3, n: 6 });
+    for (let i = 0; i < 7; i++) b.ball(x + Math.cos(i * 2.4) * r * 0.85, r * 0.7 + Math.sin(i * 1.7) * r * 0.5, z + Math.sin(i * 2.4) * r * 0.85, 0.07, i % 3 ? c : tint(c, 0.1), { layer: 'sway', sway: 0.3, seg: 5 });
+  } else if (kind === 'grass') {
+    const c = rand() > 0.5 ? '#b9b56a' : '#8fb04c';
+    for (let i = 0; i < 6; i++) b.cone(x + (rand() - 0.5) * 0.28, 0, 0.45 + rand() * 0.5, z + (rand() - 0.5) * 0.28, 0.06, i % 2 ? c : tint(c, -0.07), { seg: 4, layer: 'sway', sway: 1.4 });
+  } else if (kind === 'tulip') {
+    const c = col();
+    for (let i = 0; i < 4; i++) {
+      const sx = x + (rand() - 0.5) * 0.4, sz = z + (rand() - 0.5) * 0.4, h = 0.28 + rand() * 0.14;
+      b.box(sx - 0.014, sx + 0.014, 0, h, sz - 0.014, sz + 0.014, C.leaf, { layer: 'sway' });
+      b.cone(sx + 0.05, 0, h * 0.8, sz, 0.045, C.leafL, { seg: 4, layer: 'sway', sway: 0.5 });
+      b.ball(sx, h + 0.04, sz, 0.075, c, { sy: 1.2, layer: 'sway', sway: 0.7, seg: 5 });
+    }
+  } else if (kind === 'fern') {
+    for (let i = 0; i < 7; i++) { const a = i * 0.9 + rand(); b.ball(x + Math.cos(a) * 0.22, 0.16, z + Math.sin(a) * 0.22, 0.26, i % 2 ? greens[0] : greens[1], { sx: 0.3, sy: 0.25, sz: 1, rot: [0.5, -a + Math.PI / 2, 0], layer: 'sway', sway: 0.6, seg: 5 }); }
+  } else if (kind === 'daisy') {
+    flowers(b, rand, x, z, 0.3, 4, [C.white, C.white, C.yellow]);
+  } else if (kind === 'sunflower') {
+    const h = 1.5 + rand() * 0.6;
+    b.box(x - 0.025, x + 0.025, 0, h, z - 0.025, z + 0.025, C.leafD, { layer: 'sway' });
+    for (const k of [0.35, 0.6]) b.ball(x + 0.14, h * k, z, 0.16, C.leaf, { sy: 0.35, layer: 'sway', sway: 0.5, seg: 5 });
+    b.ball(x, h, z + 0.05, 0.3, C.yellow, { sz: 0.25, layer: 'sway', sway: 0.9, seg: 9 });
+    b.ball(x, h, z + 0.11, 0.15, C.barkD, { sz: 0.3, layer: 'sway', sway: 0.9, seg: 7 });
+  }
+}
+
+// a planted strip: n plants scattered in a rectangle
+export function border(b, rand, x0, x1, z0, z1, n, kinds, colors, ok = () => true) {
+  for (let i = 0; i < n; i++) {
+    const x = x0 + rand() * (x1 - x0), z = z0 + rand() * (z1 - z0);
+    if (ok(x, z)) plant(b, rand, x, z, kinds[Math.floor(rand() * kinds.length)], colors);
+  }
+}
+
+export function tufts(b, rand, n, x0, x1, z0, z1, ok = () => true) {
+  const greens = ['#9fcb5c', '#b4d86c', '#8dbd50', '#c3e07a', '#7fb048'];
+  for (let i = 0; i < n * 6; i++) {
+    const x = x0 + rand() * (x1 - x0), z = z0 + rand() * (z1 - z0);
+    if (!ok(x, z)) continue;
+    const h = 0.08 + rand() * 0.1, col = greens[i % 5];
+    b.cone(x, 0, h, z, 0.05, col, { seg: 3, layer: 'grass', sway: 0.45 });
+    b.cone(x + 0.07, 0, h * 0.75, z + 0.05, 0.045, greens[(i + 2) % 5], { seg: 3, layer: 'grass', sway: 0.45 });
+    if (i % 3 === 0) b.cone(x - 0.06, 0, h * 0.9, z + 0.06, 0.045, col, { seg: 3, layer: 'grass', sway: 0.45 });
+    if (i % 19 === 0) { b.ball(x + 0.15, 0.07, z - 0.1, 0.05, i % 38 ? C.white : C.yellow, { sy: 0.6, layer: 'grass', sway: 0.3, seg: 5 }); b.ball(x + 0.15, 0.09, z - 0.1, 0.022, C.yellow, { layer: 'grass', sway: 0.3, seg: 4 }); }
+    if (i % 31 === 0) b.disc(x, 0.012, z, 0.18 + rand() * 0.16, i % 62 ? '#74a240' : '#a4cb62', { seg: 6, layer: 'ground' });
+  }
+}
+
+export function patches() {}
+
+// small things scattered over a lawn so it never looks empty
+export function clutter(b, rand, n, x0, x1, z0, z1, ok = () => true, kinds = ['daisy', 'clover', 'butter', 'pebble', 'clover', 'dandelion', 'mushroom', 'leaf']) {
+  for (let i = 0; i < n; i++) {
+    const x = x0 + rand() * (x1 - x0), z = z0 + rand() * (z1 - z0);
+    if (!ok(x, z)) continue;
+    const kind = kinds[Math.floor(rand() * kinds.length)];
+    if (kind === 'daisy' || kind === 'butter') {
+      const col = kind === 'daisy' ? C.white : C.yellow;
+      for (let k = 0; k < 5 + Math.floor(rand() * 5); k++) {
+        const fx = x + (rand() - 0.5) * 0.9, fz = z + (rand() - 0.5) * 0.9;
+        b.ball(fx, 0.09, fz, 0.055, col, { sy: 0.55, layer: 'grass', sway: 0.3, seg: 5 });
+        if (kind === 'daisy') b.ball(fx, 0.11, fz, 0.024, C.yellow, { layer: 'grass', sway: 0.3, seg: 4 });
+      }
+    } else if (kind === 'clover') {
+      b.disc(x, 0.013, z, 0.45 + rand() * 0.3, '#5f9440', { seg: 7, layer: 'ground', sz: 0.8 });
+      for (let k = 0; k < 7; k++) b.ball(x + (rand() - 0.5) * 0.7, 0.03, z + (rand() - 0.5) * 0.6, 0.09, k % 2 ? '#6aa348' : '#558a3a', { sy: 0.4, layer: 'grass', sway: 0.2, seg: 5 });
+      if (rand() > 0.5) for (let k = 0; k < 3; k++) b.ball(x + (rand() - 0.5) * 0.5, 0.08, z + (rand() - 0.5) * 0.5, 0.04, '#e9d7f2', { layer: 'grass', sway: 0.2, seg: 4 });
+    } else if (kind === 'pebble') {
+      for (let k = 0; k < 3; k++) rock(b, x + (rand() - 0.5) * 0.4, z + (rand() - 0.5) * 0.4, 0.06 + rand() * 0.07, k % 2 ? C.stone : C.stoneD);
+    } else if (kind === 'dandelion') {
+      for (let k = 0; k < 3; k++) { const fx = x + (rand() - 0.5) * 0.6, fz = z + (rand() - 0.5) * 0.6, h = 0.16 + rand() * 0.1; b.box(fx - 0.01, fx + 0.01, 0, h, fz - 0.01, fz + 0.01, '#8dbd50', { layer: 'grass' }); b.ball(fx, h, fz, 0.06, k ? C.yellow : '#f4f1e6', { layer: 'grass', sway: 0.6, seg: 5 }); }
+    } else if (kind === 'mushroom') {
+      for (let k = 0; k < 2; k++) { const fx = x + k * 0.16, fz = z + k * 0.1; b.cyl(fx, 0, 0.09, fz, 0.022, 0.028, C.cream, { seg: 5 }); b.ball(fx, 0.1, fz, 0.07 - k * 0.015, '#c98a5a', { sy: 0.6, seg: 6 }); }
+    } else if (kind === 'leaf') {
+      for (let k = 0; k < 4; k++) b.disc(x + (rand() - 0.5) * 0.7, 0.014, z + (rand() - 0.5) * 0.7, 0.07, ['#c8553d', C.orange, '#b98a4a', '#d9a05b'][k], { seg: 5, layer: 'ground' });
+    }
+  }
+}
+
+// a string of little lights between two points, sagging in the middle
+export function stringLights(b, a, c, n = 9, sag = 0.3, colors = ['#fff1c9', '#ffd9a0', '#fff1c9', '#ffc9b0']) {
+  for (let i = 0; i <= n; i++) {
+    const k = i / n, d = Math.sin(k * Math.PI) * sag;
+    const x = a[0] + (c[0] - a[0]) * k, y = a[1] + (c[1] - a[1]) * k - d, z = a[2] + (c[2] - a[2]) * k;
+    if (i < n) { const k2 = (i + 1) / n, d2 = Math.sin(k2 * Math.PI) * sag; b.beam([x, y, z], [a[0] + (c[0] - a[0]) * k2, a[1] + (c[1] - a[1]) * k2 - d2, a[2] + (c[2] - a[2]) * k2], 0.012, C.dark, { seg: 3 }); }
+    b.ball(x, y - 0.07, z, 0.06, colors[i % colors.length], { layer: 'glow', seg: 5 });
+  }
+}
+
+// a low garden light beside a path
+export function pathLight(b, x, z) {
+  b.cyl(x, 0, 0.32, z, 0.025, 0.03, C.dark, { seg: 5 });
+  b.ball(x, 0.37, z, 0.07, '#fff1c9', { layer: 'glow', seg: 6 });
+  b.cone(x, 0.4, 0.5, z, 0.1, C.dark, { seg: 6 });
+}
+
+export function pot(b, x, z, { y = 0, r = 0.24, plant: leaf = C.leaf, bloom = null, solid = true } = {}) {
+  b.cyl(x, y, y + r * 1.6, z, r, r * 0.75, C.terracotta, { seg: 8 });
+  b.cyl(x, y + r * 1.45, y + r * 1.65, z, r * 1.1, r * 1.1, tint(C.terracotta, 0.05), { seg: 8 });
+  leafy(b, x, y + r * 2.5, z, r * 1.15, [leaf, tint(leaf, 0.07), tint(leaf, -0.07)], { sway: 0.2, n: 5 });
+  if (bloom) for (let i = 0; i < 5; i++) b.ball(x + Math.cos(i * 1.4) * r * 0.9, y + r * (2.9 + (i % 2) * 0.5), z + Math.sin(i * 1.4) * r * 0.9, r * 0.32, bloom, { seg: 5, layer: 'sway', sway: 0.2 });
+  if (solid) b.solid(x - r * 0.8, x + r * 0.8, y, y + r * 1.6, z - r * 0.8, z + r * 0.8, { climb: false });
+}
+
+
 export function boundary(b, x, z0, z1, kind, { h = 1.4, gaps = [] } = {}) {
   const segs = [];
   let z = z0;
@@ -61,7 +305,7 @@ export function boundary(b, x, z0, z1, kind, { h = 1.4, gaps = [] } = {}) {
       b.solid(x - 0.26, x + 0.26, h, h + 0.1, a, c);
     } else if (kind === 'hedge') {
       b.solid(x - 0.45, x + 0.45, 0, h, a, c, { climb: false });
-      for (let p = a + 0.5; p < c + 0.3; p += 0.95) b.ball(x, h * 0.5, Math.min(p, c - 0.3), 0.72, [C.leaf, C.leafD, C.leafL][Math.round(p * 3) % 3], { sy: h / 1.25, sx: 0.75, layer: 'sway', sway: 0.25 });
+      for (let p = a + 0.45; p < c + 0.3; p += 0.8) { const pz = Math.min(p, c - 0.3); leafy(b, x, h * 0.42, pz, 0.6, [C.leaf, C.leafL, C.leafD], { sy: h / 1.3, sway: 0.25, n: 7 }); leafy(b, x + 0.08, h * 0.86, pz + 0.3, 0.44, [C.leafL, '#8fc45a', C.leaf], { sway: 0.3, n: 5 }); if (Math.round(p * 5) % 4 === 0) b.ball(x + 0.42, h * 0.6, pz, 0.07, C.white, { seg: 5, layer: 'sway', sway: 0.25 }); }
     } else if (kind === 'bamboo') {
       b.solid(x - t, x + t, 0, h, a, c);
       for (let p = a + 0.08; p < c; p += 0.2) b.cyl(x, 0, h + (Math.round(p * 5) % 3) * 0.05, p, 0.07, 0.07, Math.round(p * 5) % 2 ? '#c9b46a' : '#b8a35c', { seg: 6 });
@@ -96,82 +340,12 @@ export function frontWall(b, z, x0, x1, kind, { h = 0.5, gaps = [] } = {}) {
       b.box(a, c, h, h + 0.07, z - 0.22, z + 0.22, C.stoneD);
     } else if (kind === 'hedge') {
       b.solid(a, c, 0, h + 0.2, z - 0.35, z + 0.35, { climb: false });
-      for (let p = a + 0.4; p < c + 0.2; p += 0.8) b.ball(Math.min(p, c - 0.3), 0.3, z, 0.55, Math.round(p * 2) % 2 ? C.leaf : C.leafD, { sy: 0.9, sz: 0.75, layer: 'sway', sway: 0.2 });
+      for (let p = a + 0.4; p < c + 0.2; p += 0.7) leafy(b, Math.min(p, c - 0.3), 0.32, z, 0.46, [C.leaf, C.leafL, C.leafD], { sway: 0.2, n: 5 });
     } else if (kind === 'log') {
       b.solid(a, c, 0, 0.36, z - 0.18, z + 0.18);
       b.lying((a + c) / 2, 0.19, z, c - a, 0.2, C.bark, 'x'); b.lying(a + 0.01, 0.19, z, 0.03, 0.15, C.woodL, 'x'); b.lying(c - 0.01, 0.19, z, 0.03, 0.15, C.woodL, 'x');
     }
   }
-}
-
-export function tree(b, x, z, { h = 2.6, r = 0.5, kind = 'round', leaves = [C.leaf, C.leafL, C.leafD], scale = 1, bark = C.bark, climb = true } = {}) {
-  b.solid(x - r, x + r, 0, h, z - r, z + r, { climb });
-  b.cyl(x, 0, h, z, r * 1.05, r * 1.3, bark, { seg: 9 });
-  const top = h;
-  if (kind === 'round' || kind === 'apple' || kind === 'maple') {
-    const blobs = [[-1.4, 2.0, -1.0, 1.6], [0.2, 2.7, -1.3, 1.5], [-1.8, 1.7, 0.8, 1.3], [1.3, 1.9, -0.9, 1.2], [-0.7, 3.1, 0.1, 1.3]];
-    blobs.forEach(([dx, dy, dz, br], i) => {
-      const s = scale;
-      b.ball(x + dx * s, top + dy * s, z + dz * s, br * s, leaves[i % leaves.length], { sy: 0.88, layer: 'sway', sway: 0.5, seg: 9 });
-      b.beam([x, top - 0.2, z], [x + dx * s, top + dy * s - br * s * 0.5, z + dz * s], 0.12, bark);
-      if (kind === 'apple') for (let a = 0; a < 3; a++) b.ball(x + dx * s + Math.cos(a * 2.1 + i) * br * s * 0.75, top + dy * s - br * s * 0.3, z + dz * s + Math.sin(a * 2.1 + i) * br * s * 0.75 + 0.3, 0.1, C.red);
-    });
-  } else if (kind === 'pine') {
-    for (let i = 0; i < 4; i++) b.cone(x, top - 0.6 + i * 0.95 * scale, top + 1.3 * scale + i * 0.95 * scale, z, (1.7 - i * 0.36) * scale, i % 2 ? C.pine : tint(C.pine, 0.05), { layer: 'sway', sway: 0.2, seg: 8 });
-  } else if (kind === 'willow') {
-    b.ball(x - 0.3, top + 1.4, z - 0.3, 2.0 * scale, leaves[0], { sy: 0.7, layer: 'sway', sway: 0.5 });
-    for (let a = 0; a < 9; a++) {
-      const ang = (a / 9) * Math.PI * 2;
-      b.ball(x - 0.3 + Math.cos(ang) * 1.7 * scale, top + 0.5, z - 0.3 + Math.sin(ang) * 1.7 * scale, 0.5, leaves[a % leaves.length], { sy: 2.4, layer: 'sway', sway: 1.2, seg: 7 });
-    }
-  } else if (kind === 'birch') {
-    for (const [dx, dy, dz, br] of [[-0.5, 1.2, -0.4, 1.0], [0.4, 2.0, -0.6, 0.9], [-0.2, 2.8, 0.1, 0.8]]) b.ball(x + dx, top + dy, z + dz, br * scale, leaves[Math.abs(Math.round(dx * 3)) % leaves.length], { sy: 1.1, layer: 'sway', sway: 0.6, seg: 8 });
-    for (let i = 0; i < 4; i++) b.box(x - r * 1.15, x + r * 1.15, 0.4 + i * 0.6, 0.48 + i * 0.6, z - r * 1.15, z + r * 1.15, C.dark);
-  }
-  return top;
-}
-
-export function bush(b, x, z, r = 0.8, colors = [C.leaf, C.leafL, C.leafD], { solid = true, berries = null } = {}) {
-  if (solid) b.solid(x - r * 0.75, x + r * 0.75, 0, r * 1.1, z - r * 0.75, z + r * 0.75, { climb: false });
-  b.ball(x, r * 0.6, z, r, colors[0], { sy: 0.85, layer: 'sway', sway: 0.3 });
-  b.ball(x + r * 0.55, r * 0.45, z + r * 0.35, r * 0.65, colors[1], { sy: 0.9, layer: 'sway', sway: 0.3 });
-  b.ball(x - r * 0.5, r * 0.5, z + r * 0.4, r * 0.6, colors[2], { sy: 0.9, layer: 'sway', sway: 0.3 });
-  if (berries) for (let i = 0; i < 6; i++) b.ball(x + Math.cos(i * 1.9) * r * 0.8, r * 0.5 + Math.sin(i * 2.7) * r * 0.3, z + Math.abs(Math.sin(i * 1.9)) * r * 0.85, 0.07, berries);
-}
-
-export function flowers(b, rand, x, z, r, n, colors = [C.pink, C.yellow, C.white, C.purple, C.orange]) {
-  for (let i = 0; i < n; i++) {
-    const a = rand() * Math.PI * 2, d = Math.sqrt(rand()) * r;
-    const fx = x + Math.cos(a) * d, fz = z + Math.sin(a) * d, h = 0.22 + rand() * 0.22;
-    b.box(fx - 0.015, fx + 0.015, 0, h, fz - 0.015, fz + 0.015, C.leafD, { layer: 'sway' });
-    b.ball(fx, h, fz, 0.085, colors[Math.floor(rand() * colors.length)], { sy: 0.7, layer: 'sway', sway: 0.6, seg: 6 });
-  }
-}
-
-export function tufts(b, rand, n, x0, x1, z0, z1, ok = () => true) {
-  for (let i = 0; i < n; i++) {
-    const x = x0 + rand() * (x1 - x0), z = z0 + rand() * (z1 - z0);
-    if (!ok(x, z)) continue;
-    const h = 0.1 + rand() * 0.09;
-    const col = [C.grassD, C.grassL, '#7fae49'][i % 3];
-    b.cone(x, 0, h, z, 0.07, col, { seg: 4, layer: 'sway', sway: 0.4 });
-    b.cone(x + 0.09, 0, h * 0.8, z + 0.05, 0.06, col, { seg: 4, layer: 'sway', sway: 0.4 });
-  }
-}
-
-export function patches(b, rand, n, x0, x1, z0, z1, ok = () => true, colors = [C.grassD, C.grassL]) {
-  for (let i = 0; i < n; i++) {
-    const x = x0 + rand() * (x1 - x0), z = z0 + rand() * (z1 - z0), r = 0.7 + rand() * 1.3;
-    if (!ok(x, z)) continue;
-    b.disc(x, 0.006 + i * 0.0006, z, r, colors[i % colors.length], { seg: 12, sx: 1, sz: 0.8 + rand() * 0.4 });
-  }
-}
-
-export function pot(b, x, z, { y = 0, r = 0.24, plant = C.leaf, bloom = null, solid = true } = {}) {
-  b.cyl(x, y, y + r * 1.6, z, r, r * 0.75, C.terracotta, { seg: 8 });
-  b.ball(x, y + r * 2.4, z, r * 1.1, plant, { layer: 'sway', sway: 0.2, seg: 8 });
-  if (bloom) { b.ball(x + r * 0.4, y + r * 3.2, z + r * 0.3, r * 0.38, bloom, { seg: 6 }); b.ball(x - r * 0.5, y + r * 3.0, z + r * 0.5, r * 0.34, bloom, { seg: 6 }); }
-  if (solid) b.solid(x - r * 0.8, x + r * 0.8, y, y + r * 1.6, z - r * 0.8, z + r * 0.8, { climb: false });
 }
 
 export function steppingStones(b, pts) {

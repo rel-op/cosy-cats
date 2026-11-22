@@ -4,35 +4,92 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // Shared materials and a builder that bakes static scenery into a few merged meshes.
 
-export const shared = { uTime: { value: 0 } };
+export const shared = { uTime: { value: 0 }, uCloud: { value: 1 }, uDay: { value: 1 } };
 
 // stepped light ramp for toon shading
-const rampData = new Uint8Array([0, 0, 46, 150, 222, 255].flatMap((v) => [v, v, v, 255]));
+const rampData = new Uint8Array([0, 0, 38, 132, 214, 255].flatMap((v) => [v, v, v, 255]));
 export const RAMP = new THREE.DataTexture(rampData, 6, 1, THREE.RGBAFormat);
 RAMP.minFilter = RAMP.magFilter = THREE.NearestFilter;
 RAMP.needsUpdate = true;
 
-export const toon = (color, o = {}) => new THREE.MeshToonMaterial({ color, gradientMap: RAMP, ...o });
+const NOISE = /* glsl */ `
+float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+}`;
 
-export const solidMat = toon('#ffffff', { vertexColors: true });
-export const swayMat = toon('#ffffff', { vertexColors: true });
-swayMat.onBeforeCompile = (shader) => {
-  shader.uniforms.uTime = shared.uTime;
-  shader.vertexShader = shader.vertexShader
-    .replace('#include <common>', '#include <common>\nuniform float uTime;\nattribute float aSway;')
-    .replace(
-      '#include <begin_vertex>',
-      `#include <begin_vertex>
-      float swayPhase = position.x * 0.7 + position.z * 0.45;
-      transformed.x += sin(uTime * 1.5 + swayPhase) * 0.06 * aSway;
-      transformed.z += cos(uTime * 1.2 + swayPhase * 1.3) * 0.045 * aSway;`
-    );
-};
+// Every toon material gets the same extras: a hand-painted mottling stuck to the surface,
+// drifting cloud shadows outdoors, and (optionally) wind sway or water sparkle.
+//   tex: how strong the mottling is (lawns high, cats none)
+function enhance(mat, { tex = 0.35, kind = 'plain' } = {}) {
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = shared.uTime;
+    shader.uniforms.uCloud = shared.uCloud;
+    shader.uniforms.uDay = shared.uDay;
+    shader.uniforms.uTex = { value: tex };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\nuniform float uTime;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\n${kind === 'sway' ? 'attribute float aSway;' : ''}`)
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        ${kind === 'sway' ? `
+        float swayPhase = position.x * 0.7 + position.z * 0.45;
+        float gust = sin(uTime * 0.35 + position.x * 0.08) * 0.5 + 0.8;
+        transformed.x += sin(uTime * 1.5 + swayPhase) * 0.06 * aSway * gust;
+        transformed.z += cos(uTime * 1.2 + swayPhase * 1.3) * 0.045 * aSway * gust;` : ''}
+        vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vWNormal = normalize(mat3(modelMatrix) * objectNormal);`
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nuniform float uTime;\nuniform float uCloud;\nuniform float uDay;\nuniform float uTex;\nvarying vec3 vWPos;\nvarying vec3 vWNormal;\n${NOISE}`)
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+        {
+          vec3 wn = abs(vWNormal);
+          vec2 guv = wn.y > 0.6 ? vWPos.xz : (wn.x > wn.z ? vWPos.zy : vWPos.xy);
+          float blot = floor((vnoise(guv * 0.5) * 0.6 + vnoise(guv * 1.6 + 7.3) * 0.4) * 5.0) / 5.0 - 0.4;
+          float sp = hash21(floor(guv * 6.5));
+          float speck = (sp > 0.9 ? 0.08 : 0.0) - (sp < 0.12 ? 0.07 : 0.0);
+          diffuseColor.rgb *= 1.0 + (blot * 0.3 + speck) * uTex;
+          if (uTex > 0.9 && wn.y > 0.6) {
+            // lawns: bigger patches of lighter and deeper green, and mown stripes in the tidy gardens
+            float big = vnoise(guv * 0.21 + 3.1);
+            diffuseColor.rgb *= 0.9 + 0.22 * floor(big * 4.0) / 4.0;
+            float tidy = step(abs(vWPos.x + 12.0), 23.6) * step(vWPos.z, 11.4) * step(-10.9, vWPos.z);
+            diffuseColor.rgb *= 1.0 + 0.055 * tidy * (step(0.5, fract((vWPos.x + vWPos.z) / 2.6)) - 0.5);
+          }
+          diffuseColor.rgb += vec3(0.035, 0.02, -0.03) * blot * uTex;
+          ${kind === 'water' ? `
+          float wv = sin(vWPos.x * 3.1 + vWPos.z * 2.3 + uTime * 1.3) * 0.5 + 0.5;
+          float wv2 = sin(vWPos.x * 1.3 - vWPos.z * 3.7 + uTime * 0.9) * 0.5 + 0.5;
+          diffuseColor.rgb += vec3(0.06, 0.09, 0.1) * step(0.7, wv * wv2 + wv * 0.35);
+          diffuseColor.rgb -= vec3(0.04, 0.03, 0.0) * step(0.78, (1.0 - wv) * wv2);
+          float spk = step(0.988, hash21(floor(vWPos.xz * 10.0) + floor(uTime * 3.0)));
+          diffuseColor.rgb += vec3(0.6) * spk * (0.25 + 0.75 * uDay);` : ''}
+          float cl = vnoise(vWPos.xz * 0.05 + uTime * vec2(0.022, 0.012)) * 0.65 + vnoise(vWPos.xz * 0.13 - uTime * 0.015) * 0.35;
+          diffuseColor.rgb *= 1.0 - 0.2 * smoothstep(0.5, 0.57, cl) * uCloud;
+        }`
+      );
+  };
+  mat.customProgramCacheKey = () => 'cosy-' + kind;
+  return mat;
+}
+
+export const toon = (color, o = {}, extra) => enhance(new THREE.MeshToonMaterial({ color, gradientMap: RAMP, ...o }), extra);
+// cats and other characters: no mottling
+export const fur = (color) => toon(color, {}, { tex: 0 });
+
+export const solidMat = toon('#ffffff', { vertexColors: true }, { tex: 0.42 });
+export const groundMat = toon('#ffffff', { vertexColors: true }, { tex: 1.0 });
+export const swayMat = toon('#ffffff', { vertexColors: true }, { tex: 0.3, kind: 'sway' });
 // things that light up at night: colour = vertex colour * glowMat.color
 export const glowMat = new THREE.MeshBasicMaterial({ color: '#ffffff', vertexColors: true });
 // always-lit version, for lamps and fires indoors
 export const litMat = new THREE.MeshBasicMaterial({ color: '#ffffff', vertexColors: true });
-export const waterMat = toon('#ffffff', { vertexColors: true, transparent: true, opacity: 0.86 });
+export const waterMat = toon('#ffffff', { vertexColors: true, transparent: true, opacity: 0.9 }, { tex: 0, kind: 'water' });
 
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 const geoCache = new Map();
@@ -71,7 +128,7 @@ export class Builder {
     this.ox = ox;
     this.oz = oz;
     this.oy = oy;
-    this.layers = { solid: [], sway: [], glow: [], lit: [], water: [] };
+    this.layers = { solid: [], ground: [], sway: [], grass: [], glow: [], lit: [], water: [] };
   }
 
   // ---- raw geometry ----
@@ -86,7 +143,7 @@ export class Builder {
       col[i * 3] = tmpColor.r; col[i * 3 + 1] = tmpColor.g; col[i * 3 + 2] = tmpColor.b;
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    if (layer === 'sway') {
+    if (layer === 'sway' || layer === 'grass') {
       g.computeBoundingBox();
       const y0 = g.boundingBox.min.y, h = Math.max(0.001, g.boundingBox.max.y - y0);
       const s = new Float32Array(n);
@@ -179,13 +236,14 @@ export class Builder {
   p(x, y, z) { return new THREE.Vector3(x + this.ox, y + this.oy, z + this.oz); }
 
   finish() {
-    const mats = { solid: solidMat, sway: swayMat, glow: glowMat, lit: litMat, water: waterMat };
+    const mats = { solid: solidMat, ground: groundMat, sway: swayMat, grass: swayMat, glow: glowMat, lit: litMat, water: waterMat };
     for (const [name, list] of Object.entries(this.layers)) {
       if (!list.length) continue;
       const merged = mergeGeometries(list, false);
       for (const g of list) g.dispose();
       const mesh = new THREE.Mesh(merged, mats[name]);
       mesh.castShadow = name === 'solid' || name === 'sway';
+      if (name === 'ground') mesh.receiveShadow = true;
       mesh.receiveShadow = name !== 'glow' && name !== 'lit';
       if (name === 'water') { mesh.castShadow = false; mesh.renderOrder = 1; }
       mesh.matrixAutoUpdate = false;

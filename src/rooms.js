@@ -50,7 +50,7 @@ export function buildRooms(W, scene) {
     b.dyn(m, x, 0.02, z);
   };
   const lamp = (b, x, y, z, color = '#ffb060', power = 10, dist = 8) => {
-    const l = new THREE.PointLight(color, power, dist, 1.4);
+    const l = new THREE.PointLight(color, power * 0.5, dist, 1.4);
     b.dyn(l, x, y, z);
     return l;
   };
@@ -63,7 +63,7 @@ export function buildRooms(W, scene) {
 
   // ---------- home: the kitchen-sitting room behind the cat flap ----------
   {
-    const b = room('home', { w: 9, d: 7, h: 3.2, floor: '#b98c5e', wall: '#e9dcc3', wall2: '#b9c9a8', light: { hemi: ['#ffe9c8', '#8a6a52', 1.05, 0.5], sun: ['#fff1da', 1.5, 0.35], bg: ['#2b2233', '#1b1622'] } });
+    const b = room('home', { w: 9, d: 7, h: 3.2, floor: '#b98c5e', wall: '#e9dcc3', wall2: '#b9c9a8', light: { hemi: ['#ffe9c8', '#8a6a52', 0.95, 0.5], sun: ['#fff1da', 1.5, 0.3], bg: ['#2b2233', '#1b1622'] } });
     planksFloor(b, 9, 7, '#b98c5e', '#c2966a');
     b.box(0, 9, 0, 0.25, 0, 0.04, C.white); b.box(0, 0.04, 0, 0.25, 0, 7, C.white);
     doorL(b, 2.3, 3.5, 2.5, '#5d8f8c');
@@ -78,7 +78,7 @@ export function buildRooms(W, scene) {
     for (const [x, hgt, col] of [[-0.25, 0.5, '#ff8a3a'], [0.05, 0.7, '#ffb347'], [0.3, 0.45, '#ff8a3a'], [0, 0.4, '#ffe08a']]) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.16, hgt, 5), new THREE.MeshBasicMaterial({ color: col })); f.position.set(x, hgt / 2, 0); fire.add(f); }
     b.dyn(fire, 2.5, 0.2, 0.72);
     const fl = lamp(b, 2.5, 0.7, 1.3, '#ff9a4a', 16, 9);
-    W.updaters.push((dt, t) => { const k = 0.85 + Math.sin(t * 11) * 0.08 + Math.sin(t * 23.7) * 0.07; fl.intensity = 16 * k; fire.children.forEach((f, i) => { f.scale.y = 0.85 + Math.sin(t * (9 + i * 3) + i) * 0.2; }); });
+    W.updaters.push((dt, t) => { const k = 0.85 + Math.sin(t * 11) * 0.08 + Math.sin(t * 23.7) * 0.07; fl.intensity = 8 * k; fire.children.forEach((f, i) => { f.scale.y = 0.85 + Math.sin(t * (9 + i * 3) + i) * 0.2; }); });
     b.box(1.6, 1.9, 1.82, 2.2, 0.15, 0.4, C.navy); b.cyl(3.3, 1.82, 2.1, 0.3, 0.05, 0.05, C.white, { seg: 6 }); b.ball(3.3, 2.14, 0.3, 0.05, '#ffd98a', { layer: 'lit', seg: 6 });
     b.box(2.0, 3.0, 2.15, 2.9, 0, 0.04, C.woodD); b.box(2.1, 2.9, 2.25, 2.8, 0.03, 0.05, '#8fb0a0');
     // rug, sofa, basket
@@ -98,6 +98,21 @@ export function buildRooms(W, scene) {
     b.box(7.1, 8.5, 0, 0.015, 4.7, 5.6, '#7fa39a');
     W.addBowl('food', 'home', b.p(7.5, 0.015, 5.15));
     W.addBowl('water', 'home', b.p(8.1, 0.015, 5.15));
+    // cat tree by the window, curtains, shelves and pictures
+    b.block(5.2, 5.9, 0, 0.08, 0.5, 1.2, '#b9a2ee', { climb: false });
+    b.block(5.42, 5.68, 0, 1.3, 0.72, 0.98, '#d9c9a3'); b.block(5.1, 6.0, 1.3, 1.42, 0.4, 1.3, '#b9a2ee');
+    b.block(6.35, 6.6, 0, 2.0, 0.3, 0.55, '#d9c9a3'); b.block(6.0, 6.95, 2.0, 2.12, 0.1, 0.95, '#b9a2ee'); b.box(5.9, 6.4, 1.42, 1.5, 0.5, 0.9, '#b9a2ee');
+    W.addBed('cattree', 'home', b.p(6.48, 2.12, 0.52), 0.5);
+    for (const x of [5.25, 7.55]) b.box(x - 0.16, x + 0.16, 1.0, 2.85, 0.05, 0.1, '#d98a8a');
+    b.box(5.1, 7.7, 2.8, 2.9, 0.03, 0.14, C.woodD);
+    b.box(0, 9, 0.25, 0.95, 0, 0.03, '#a9b998'); b.box(0, 9, 0.95, 1.02, 0, 0.05, C.white);
+    b.box(0, 0.03, 0.25, 0.95, 0, 7, '#dccfb2'); b.box(0, 0.05, 0.95, 1.02, 0, 7, C.white);
+    for (const [z, y, c] of [[0.9, 1.9, '#8fb0a0'], [1.55, 2.1, '#d98a8a'], [5.0, 2.0, '#e8c170'], [5.9, 1.8, '#7fa3c7']]) { b.box(0, 0.04, y, y + 0.55, z, z + 0.48, C.woodD); b.box(0.03, 0.05, y + 0.07, y + 0.48, z + 0.07, z + 0.41, c); }
+    b.box(0, 0.3, 1.5, 1.56, 5.0, 6.4, C.woodL); for (let k = 0; k < 4; k++) b.cyl(0.15, 1.56, 1.76 + (k % 2) * 0.08, 5.15 + k * 0.38, 0.07, 0.06, [C.terracotta, C.blue, C.white, C.teal][k], { seg: 6 });
+    b.ball(0.15, 1.9, 5.15, 0.14, C.leaf, { seg: 6, layer: 'sway', sway: 0.2 });
+    b.cyl(7.3, 2.6, 3.2, 3.2, 0.012, 0.012, C.dark, { seg: 4 }); b.cyl(7.3, 2.3, 2.6, 3.2, 0.2, 0.14, C.terracotta, { seg: 7 }); for (let k = 0; k < 5; k++) b.ball(7.3 + Math.cos(k * 1.3) * 0.2, 2.2 - (k % 3) * 0.14, 3.2 + Math.sin(k * 1.3) * 0.2, 0.13, k % 2 ? C.leaf : C.leafL, { seg: 5, layer: 'sway', sway: 0.4 });
+    b.cyl(2.4, 0, 0.28, 3.2, 0.3, 0.26, '#b98a55', { seg: 9 }); for (const [dx, dz, c] of [[0, 0, C.purple], [0.14, 0.1, C.pink], [-0.12, 0.08, C.teal]]) b.ball(2.4 + dx, 0.34, 3.2 + dz, 0.13, c, { seg: 6 });
+    b.solid(2.1, 2.7, 0, 0.3, 2.9, 3.5, { climb: false });
     W.addItem('mouse', 'home', b.p(5.6, 0, 4.6));
     W.addBall('home', b.p(3.3, 0, 5.4), C.purple, 0.13);
     b.finish();

@@ -1,11 +1,12 @@
 import * as THREE from 'three';
+import { shared } from './build.js';
 
 // Time of day runs 0 (morning) to 1 (night) and then waits there until the cats sleep.
 const KEYS = [
-  { t: 0.0, sun: '#ffe9c4', sunI: 2.25, sky: '#d9ecff', gnd: '#b9cf95', hemiI: 1.0, top: '#8fc7e6', bot: '#fbe6c0', pos: [-6, 10, 8] },
-  { t: 0.4, sun: '#fff7e6', sunI: 2.5, sky: '#e2f1ff', gnd: '#bfd89c', hemiI: 1.08, top: '#73bed3', bot: '#d9f0f2', pos: [-2, 15, 7] },
-  { t: 0.78, sun: '#ffaa5e', sunI: 2.3, sky: '#ffc9a0', gnd: '#a58a6c', hemiI: 0.85, top: '#7a6aa8', bot: '#ffb873', pos: [9, 6, 5] },
-  { t: 1.0, sun: '#9fb4ff', sunI: 1.45, sky: '#6a7fd0', gnd: '#36406c', hemiI: 1.25, top: '#0d1730', bot: '#2b3a6e', pos: [-5, 12, 7] },
+  { t: 0.0, sun: '#ffdca6', sunI: 2.7, sky: '#b9cdfa', gnd: '#a9c486', hemiI: 0.92, top: '#8fc7e6', bot: '#fbe6c0', pos: [-7.5, 6.2, 7], warm: 0.5 },
+  { t: 0.4, sun: '#fff4dc', sunI: 2.75, sky: '#c9dcff', gnd: '#b4d193', hemiI: 1.0, top: '#6fb8d6', bot: '#d9f0f2', pos: [-3, 12, 6.5], warm: 0.1 },
+  { t: 0.78, sun: '#ff9a4d', sunI: 2.7, sky: '#c9b0f2', gnd: '#8f6f5c', hemiI: 0.78, top: '#6f5fa0', bot: '#ffb066', pos: [9, 3.6, 5.5], warm: 0.9 },
+  { t: 1.0, sun: '#93a9ff', sunI: 1.4, sky: '#5870d6', gnd: '#2a3360', hemiI: 1.2, top: '#0d1730', bot: '#2b3a6e', pos: [-5, 10, 7], warm: 0 },
 ];
 for (const k of KEYS) {
   for (const f of ['sun', 'sky', 'gnd', 'top', 'bot']) k[f] = new THREE.Color(k[f]);
@@ -67,6 +68,9 @@ export class DayNight {
       u.uSkyBot.value.copy(a.bot).lerp(b.bot, f);
       u.uIndoor.value = 0;
       u.uNight.value = n;
+      u.uWarm.value = (a.warm + (b.warm - a.warm) * f) * 0.5;
+      shared.uCloud.value = 1 - n * 0.7;
+      shared.uDay.value = 1 - n;
     } else {
       const L = region.light;
       const dusk = smooth(0.6, 0.8, t) * (1 - n);
@@ -80,6 +84,9 @@ export class DayNight {
       u.uSkyBot.value.set(L.bg[1]);
       u.uIndoor.value = 1;
       u.uNight.value = 0;
+      u.uWarm.value = 0.25;
+      shared.uCloud.value = 0;
+      shared.uDay.value = 1 - n;
     }
     this.sun.position.copy(this.sun.target.position).addScaledVector(this.dir, 60);
   }

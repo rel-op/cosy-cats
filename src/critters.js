@@ -204,6 +204,33 @@ export function buildCritters(W, out, rand) {
     fgeo.attributes.position.needsUpdate = true;
   });
 
+  // ---- specks of pollen and dust drifting in the light ----
+  const NM = 110;
+  const mpos = new Float32Array(NM * 3);
+  const mbase = [];
+  for (let i = 0; i < NM; i++) mbase.push([rand() * 30, rand() * 4.5, rand() * 20, rand() * 10]);
+  const mgeo = new THREE.BufferGeometry();
+  mgeo.setAttribute('position', new THREE.BufferAttribute(mpos, 3));
+  const mmat = new THREE.PointsMaterial({ color: '#fff6d2', size: 1, sizeAttenuation: false, transparent: true, opacity: 0.5, depthWrite: false });
+  const motes = new THREE.Points(mgeo, mmat);
+  motes.frustumCulled = false;
+  motes.renderOrder = 4;
+  W.scene.add(motes);
+  W.updaters.push((dt, t, cats, night) => {
+    const c = cats[0].pos, inside = W.regions[W.region].indoor;
+    mmat.opacity = inside ? 0.35 * (1 - night) : 0.55 * (1 - night * 0.8);
+    const sx = inside ? 0.35 : 1, sy = inside ? 0.6 : 1;
+    for (let i = 0; i < NM; i++) {
+      const [x, y, z, p] = mbase[i];
+      const wx = ((x + t * 0.25 + Math.sin(t * 0.3 + p) * 0.6) % 30 + 30) % 30 - 15;
+      const wz = ((z + t * 0.1) % 20 + 20) % 20 - 10;
+      mpos[i * 3] = c.x + wx * sx;
+      mpos[i * 3 + 1] = 0.3 + ((y + t * 0.07 + Math.sin(t * 0.5 + p * 3) * 0.2) % 4.5) * sy;
+      mpos[i * 3 + 2] = c.z + wz * sx;
+    }
+    mgeo.attributes.position.needsUpdate = true;
+  });
+
   // ---- next door's cat, asleep on the wall as usual ----
   const napper = new Cat('mama', coatById('grey'), 5);
   napper.pos.set(12, 1.3, -6);

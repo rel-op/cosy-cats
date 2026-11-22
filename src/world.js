@@ -77,9 +77,26 @@ export function buildWorld(scene) {
   // the street-wide base, boundaries and lane
   {
     const b = at(0);
-    b.box(-60.8, 60.8, -0.7, 0, -12.7, 15.8, C.grass);
-    b.box(-60.6, 60.6, -3.2, -0.7, -12.5, 15.6, C.earth);
-    b.box(-60.6, 60.6, -1.5, -1.3, -12.52, 15.62, C.soil);
+    b.box(-68, 68, -0.7, 0, -23, 15.8, C.grass, { layer: 'ground' });
+    b.box(-67.8, 67.8, -3.4, -0.7, -22.8, 15.6, C.earth);
+    b.box(-67.82, 67.82, -1.5, -1.3, -22.82, 15.62, C.soil);
+    b.box(-67.82, 67.82, -2.4, -2.25, -22.82, 15.62, C.soil);
+    for (let i = 0; i < 40; i++) P.rock(b, -66 + i * 3.4 + (i % 3), 15.7, 0.25 + (i % 4) * 0.08, i % 2 ? C.stoneD : C.earth);
+    // big trees behind the houses and beyond the ends of the street
+    const woods = [[C.leaf, C.leafL, C.leafD], ['#5d9a48', '#7fb558', '#44803c'], [C.leafD, C.leaf, '#2f6b3a'], ['#6fa548', '#93c45c', '#4f8a3c']];
+    for (let i = 0; i < 19; i++) {
+      const x = -66 + i * 7.3 + (i % 3) * 1.1, z = -17.6 - (i % 2) * 2.3, hh = 4.8 + (i % 4) * 0.9, r = 3.0 + (i % 3) * 0.5, cols = woods[i % 4];
+      b.cyl(x, 0, hh, z, 0.5, 0.75, C.barkD, { seg: 7 });
+      P.leafy(b, x, hh + 1.7, z, r, cols, { n: 12, sway: 0.4 });
+      P.leafy(b, x - 1.9, hh + 0.5, z + 0.6, r * 0.62, cols, { n: 8, sway: 0.4 });
+      P.leafy(b, x + 2.0, hh + 0.8, z + 0.3, r * 0.6, cols, { n: 8, sway: 0.4 });
+    }
+    for (const sx of [-1, 1]) for (let k = 0; k < 4; k++) {
+      const x = sx * (64.2 + (k % 2) * 1.6), z = -9 + k * 6.6, cols = woods[(k + (sx > 0 ? 1 : 0)) % 4];
+      b.cyl(x, 0, 3.6, z, 0.45, 0.65, C.barkD, { seg: 7 });
+      P.leafy(b, x, 5.0, z, 2.6, cols, { n: 11, sway: 0.4 });
+      P.leafy(b, x - sx * 0.5, 3.6, z + 1.6, 1.6, cols, { n: 7, sway: 0.4 });
+    }
     // lane paving
     b.block(-60.8, 60.8, 0, 0.05, 11.7, 15.8, C.stoneD, { climb: false });
     for (let x = -60; x < 60.5; x += 1.5) b.box(x, x + 1.42, 0.05, 0.06, 11.78, 13.7, Math.round(x / 1.5) % 2 ? C.stone : '#b7b1a3');
@@ -106,11 +123,15 @@ export function buildWorld(scene) {
     // lane furniture
     for (const x of [-42, -18, 6, 30, 54]) {
       P.lampPost(b, x, 15.2);
-      W.nightLight(out, new THREE.Vector3(x, 2.3, 14.8), '#ffc070', 14, 10);
+      W.nightLight(out, new THREE.Vector3(x, 2.3, 14.8), '#ffc070', 9, 10);
     }
     for (const x of [8.6, 9.5]) { b.block(x - 0.38, x + 0.38, 0.05, 1.05, 14.5, 15.3, x < 9 ? '#5d7a66' : '#6b6f7a'); b.box(x - 0.42, x + 0.42, 1.05, 1.13, 14.46, 15.34, C.dark); b.solid(x - 0.42, x + 0.42, 1.05, 1.13, 14.46, 15.34); }
     b.block(-31.2, -28.8, 0.05, 0.5, 14.7, 15.4, C.wood); b.block(-31.2, -28.8, 0.5, 1.0, 15.25, 15.4, C.woodD);
     b.block(39.5, 40.5, 0.05, 0.7, 14.5, 15.4, C.card); b.block(39.7, 40.3, 0.7, 1.2, 14.7, 15.3, C.cardD);
+    P.border(b, rand, -59, 59, 15.35, 15.7, 110, ['grass', 'daisy', 'mound', 'grass'], [C.white, C.yellow, C.purple]);
+    P.border(b, rand, -59, 59, 11.75, 12.0, 46, ['grass', 'daisy', 'fern'], [C.white, C.yellow]);
+    for (let i = 0; i < 70; i++) b.disc(-59 + rand() * 118, 0.065, 11.9 + rand() * 3.6, 0.07 + rand() * 0.05, ['#c8553d', C.orange, '#b98a4a', C.leafL][i % 4], { seg: 5 });
+    for (let i = 0; i < 60; i++) { const x = -59 + rand() * 118, z = 11.9 + rand() * 3.6; b.box(x, x + 0.3 + rand() * 0.5, 0.06, 0.066, z, z + 0.05, C.moss); }
     for (const [x, z, r] of [[-6, 13.4, 0.7], [27, 13.7, 0.9], [-44, 12.9, 0.6]]) { b.disc(x, 0.065, z, r, C.waterD, { layer: 'water', sz: 0.7 }); W.ponds.push({ x, z, rx: r, rz: r * 0.7 }); }
     b.finish();
   }
@@ -209,13 +230,13 @@ function home(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-1, 7, -11, -6.5]])(x, z) && pondExcl([[6.2, 5.6, 1.9, 1.6]])(x, z);
   P.patches(b, rand, 12, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 210, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { door: { x: 2.7, color: C.teal, flap: true, y: 0.12 }, windows: [[-5.2, -2.8, 1.1, 3.1], [5.5, 7.5, 1.5, 3.1]] });
+  P.house(b, { door: { x: 2.7, color: C.teal, flap: true, y: 0.12, porch: C.terracotta }, windows: [[-5.2, -2.8, 1.1, 3.1], [5.5, 7.5, 1.5, 3.1], [-9.6, -7.8, 1.5, 3.1]], shutters: '#6fa3a0', boxes: [1, 2], chimney: 8.5, pipe: -1.6, curtains: '#f2c9a0' });
   // patio
   b.solid(-1, 7, 0, 0.12, -11, -6.5, { climb: false });
   for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) b.box(-1 + i * 2 + 0.04, 1 + i * 2 - 0.04, 0, 0.12, -11 + j * 1.5 + 0.04, -9.5 + j * 1.5 - 0.04, [C.stoneL, C.stone, '#d3cdbf'][(i + j * 2) % 3]);
   b.box(1.22, 1.38, 2.95, 3.1, -11.0, -10.7, C.dark);
   b.ball(1.3, 2.84, -10.72, 0.16, '#ffffff', { layer: 'glow', seg: 8 });
-  W.nightLight(out, b.p(1.3, 2.6, -10.1), '#ffc070', 14, 10);
+  W.nightLight(out, b.p(1.3, 2.6, -10.1), '#ffc070', 7, 10);
   W.link('outside', b.p(2.7, 0.12, -10.62), [0, 1], 'home', W.roomDoor.home, [1, 0], 'flap');
   // window ledge with a cushion, and a crate to help a kitten up
   b.block(-5.3, -2.7, 0, 1.1, -11, -10.35, '#e6d3b3');
@@ -253,6 +274,16 @@ function home(W, b, rand, out) {
   for (const [x, z] of [[8.62, -3.38], [9.38, -3.38], [8.62, -2.62], [9.38, -2.62]]) b.box(x - 0.03, x + 0.03, 1.36, 1.78, z - 0.03, z + 0.03, C.woodD);
   P.flowers(b, rand, 9, 1.4, 1.3, 20);
   P.flowers(b, rand, -8, -7.6, 1.3, 18);
+  const cottage = [C.purple, C.pink, C.blue, C.white, C.yellow, C.red];
+  P.border(b, rand, -11.5, -5.6, -10.75, -9.9, 16, ['spike', 'rose', 'mound', 'tulip', 'daisy', 'spike'], cottage);
+  P.border(b, rand, 7.3, 11.4, -10.75, -9.8, 11, ['rose', 'spike', 'mound', 'tulip'], cottage);
+  P.border(b, rand, -11.6, -10.7, -0.6, 5.0, 10, ['mound', 'fern', 'spike', 'grass'], cottage);
+  P.border(b, rand, -11.6, -10.7, 6.9, 10.9, 8, ['fern', 'mound', 'spike', 'daisy'], cottage);
+  P.border(b, rand, 10.5, 11.5, -7.4, 2.6, 13, ['spike', 'rose', 'mound', 'grass'], cottage);
+  P.border(b, rand, 10.5, 11.5, 4.8, 10.8, 9, ['fern', 'mound', 'spike'], cottage);
+  P.border(b, rand, -11, 2.6, 10.3, 11.1, 16, ['tulip', 'daisy', 'mound', 'spike'], cottage);
+  P.border(b, rand, 5, 11, 10.3, 11.1, 9, ['tulip', 'daisy', 'mound'], cottage);
+  P.border(b, rand, 3.9, 8.6, 7.4, 8.4, 8, ['grass', 'fern', 'spike'], [C.purple, C.white]);
   P.flowers(b, rand, -1.5, 9.8, 1.0, 12, [C.white, C.yellow]);
   b.solid(-8.9, -8.1, 0, 0.45, 8.2, 9.0);
   b.cyl(-8.5, 0, 0.45, 8.6, 0.42, 0.48, C.bark); b.cyl(-8.5, 0.45, 0.47, 8.6, 0.36, 0.36, C.woodL);
@@ -260,6 +291,17 @@ function home(W, b, rand, out) {
   P.bush(b, 10.3, -8.6, 0.8, [C.leafD, C.leaf, C.leafL], { berries: C.red });
   P.steppingStones(b, [[3.2, -5.6], [3.5, -4.0], [3.3, -2.4], [3.7, -0.8], [3.6, 0.9], [3.5, 2.6], [3.3, 4.4], [3.5, 6.2], [3.7, 8.0], [3.8, 9.8]]);
   P.rock(b, 10.8, 10.2, 0.4); P.rock(b, -2.6, 10.6, 0.3);
+  P.clutter(b, rand, 46, -11, 11, -9.5, 10.8, ok);
+  P.clutter(b, rand, 10, -6.5, -2.5, -0.5, 3.5, ok, ['leaf', 'leaf', 'mushroom']);
+  P.stringLights(b, [-11.85, 1.5, -1.0], [-11.85, 1.5, 5.3], 9, 0.25);
+  P.stringLights(b, [-1.0, 2.6, -10.9], [1.2, 2.9, -10.9], 5, 0.18);
+  P.stringLights(b, [4.3, 2.9, -10.9], [7.2, 2.4, -10.9], 6, 0.2);
+  for (const [x, z] of [[2.5, -5.2], [4.2, -3.2], [2.7, -1.6], [4.3, 0.2], [2.9, 1.9], [4.1, 3.6], [2.8, 7.2]]) P.pathLight(b, x, z);
+  // a little table on the patio, a watering can, a gnome by the pond
+  b.block(-0.4, 0.5, 0.12, 0.62, -7.6, -6.9, C.white, { climb: true }); b.box(-0.5, 0.6, 0.62, 0.68, -7.7, -6.8, C.white);
+  b.cyl(0.05, 0.68, 0.84, -7.25, 0.1, 0.12, C.blue, { seg: 7 }); b.ball(0.05, 0.9, -7.25, 0.09, C.pink, { seg: 5 });
+  b.cyl(6.6, 0.12, 0.45, -10.3, 0.2, 0.17, '#6d9a8a', { seg: 8 }); b.beam([6.75, 0.36, -10.3], [7.1, 0.52, -10.3], 0.035, '#6d9a8a'); b.beam([6.45, 0.42, -10.3], [6.3, 0.2, -10.3], 0.03, '#6d9a8a');
+  b.cyl(8.5, 0, 0.3, 4.9, 0.12, 0.14, C.blue, { seg: 7 }); b.ball(8.5, 0.38, 4.9, 0.1, '#f2d2b8', { seg: 6 }); b.cone(8.5, 0.44, 0.72, 4.9, 0.11, C.red, { seg: 7 }); b.ball(8.5, 0.3, 5.0, 0.07, C.white, { sy: 1.2, seg: 5 });
   W.addItem('sock', 'outside', b.p(-2.4, 0, 8.9));
   W.addItem('wool', 'outside', b.p(-7.2, 0, -6.2));
   W.addItem('feather', 'outside', b.p(8.1, 0, -1.9));
@@ -272,14 +314,14 @@ function treehouseGarden(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-8.2, -3.8, -7.2, -2.8], [-4, 0.2, 5, 8], [6.2, 8.8, 4.2, 6.8]])(x, z) && pondExcl([[8, -5.5, 1.5, 1.5]])(x, z);
   P.patches(b, rand, 12, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 200, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: '#cfdde2', roof: C.slateD, door: { x: -6.5, color: C.red }, windows: [[-10.5, -8.6, 1.3, 3.0], [-3.5, -1.2, 1.3, 3.0], [6.5, 9.5, 1.3, 3.0]] });
+  P.house(b, { wall: '#cfdde2', roof: C.slateD, style: 'clapboard', door: { x: -6.5, color: C.red, porch: C.white }, windows: [[-10.5, -8.6, 1.3, 3.0], [-3.5, -1.2, 1.3, 3.0], [6.5, 9.5, 1.3, 3.0]], shutters: C.navy, boxes: [0, 2], chimney: -1.5, pipe: 4.4, curtains: '#f6e7a8' });
   // the oak and its treehouse: climb the trunk from the near side
   b.solid(1.4, 2.6, 0, 3.2, -1.6, -0.4);
   b.cyl(2, 0, 3.2, -1, 0.62, 0.8, C.bark, { seg: 9 });
   for (let i = 0; i < 7; i++) b.box(2.6, 2.68, 0.35 + i * 0.4, 0.42 + i * 0.4, -1.35, -0.65, C.woodL);
   b.box(2.6, 2.66, 0.2, 3.1, -1.4, -1.34, C.hay); b.box(2.6, 2.66, 0.2, 3.1, -0.66, -0.6, C.hay);
   for (const [dx, dy, dz, r] of [[-3.6, 4.6, -3.4, 2.0], [-1.0, 5.6, -4.8, 1.9], [1.8, 5.0, -4.0, 1.7], [-4.6, 3.8, -0.6, 1.5], [3.4, 4.2, -2.4, 1.4], [0.6, 6.4, -2.6, 1.6]]) {
-    b.ball(2 + dx, 3.2 + dy, -1 + dz, r, [C.leaf, C.leafL, C.leafD][Math.abs(Math.round(dx)) % 3], { sy: 0.88, layer: 'sway', sway: 0.5, seg: 9 });
+    P.leafy(b, 2 + dx, 3.2 + dy, -1 + dz, r, [[C.leaf, C.leafL, C.leafD], ['#5d9a48', '#7fb558', '#44803c']][Math.abs(Math.round(dx)) % 2], { n: 12, sway: 0.5 });
   }
   b.block(-2.6, 2.6, 3.0, 3.2, -4.4, -0.4, C.wood);
   for (let x = -2.6; x < 2.6; x += 0.65) b.box(x, x + 0.6, 3.2, 3.21, -4.4, -0.4, Math.round(x * 3) % 2 ? C.plank : C.woodL);
@@ -325,10 +367,26 @@ function treehouseGarden(W, b, rand, out) {
   W.addBed('picnic', 'outside', b.p(-2.6, 0.03, 6.4), 1.0);
   W.addBall('outside', b.p(3.2, 0, 4.2), C.red);
   P.flowers(b, rand, -10.3, 8.5, 1.1, 14, [C.yellow, C.orange]);
+  const bright = [C.red, C.yellow, C.orange, C.pink, C.white];
+  P.border(b, rand, -11.5, -7.8, -10.75, -9.9, 9, ['tulip', 'rose', 'daisy', 'mound'], bright);
+  P.border(b, rand, -5.0, 11.4, -10.75, -9.9, 26, ['tulip', 'rose', 'daisy', 'mound', 'spike'], bright);
+  P.border(b, rand, -11.5, -10.6, -7.5, 0.6, 10, ['mound', 'tulip', 'fern'], bright);
+  P.border(b, rand, 10.5, 11.5, -3.5, 4.8, 11, ['rose', 'tulip', 'mound', 'spike'], bright);
+  P.border(b, rand, -11, -3.2, 10.3, 11.1, 12, ['tulip', 'daisy', 'mound'], bright);
+  P.border(b, rand, -0.2, 9.5, 10.3, 11.1, 14, ['tulip', 'daisy', 'mound'], bright);
   P.flowers(b, rand, 10.2, 0.5, 1.0, 12, [C.pink, C.white]);
   P.bush(b, 10.4, 9.6, 0.8);
   P.tree(b, -10, -8.6, { kind: 'birch', h: 2.4, r: 0.28, bark: '#e9e4d6', leaves: [C.leafL, '#a9c765', C.leaf] });
   P.steppingStones(b, [[-6.4, -9.2], [-5.6, -7.9], [2.6, 9.8]]);
+  P.clutter(b, rand, 44, -11, 11, -9.5, 10.8, ok, ['daisy', 'butter', 'clover', 'daisy', 'dandelion', 'clover']);
+  // bunting and lights on the treehouse
+  P.stringLights(b, [-2.5, 4.0, -0.45], [2.5, 4.0, -0.45], 10, 0.3, ['#ffd98a', '#ff9a8a', '#9ad9ff', '#b9ff9a']);
+  P.stringLights(b, [-12.0, 1.5, -6.5], [-12.0, 1.5, 0.5], 9, 0.25);
+  for (let i = 0; i < 9; i++) b.cone(-1.9 + i * 0.3, 4.55, 4.75, -1.96, 0.1, [C.red, C.yellow, C.blue, C.white][i % 4], { seg: 3 });
+  for (const [x, z] of [[-6.9, -9.0], [-5.1, -7.4], [1.8, 9.0], [3.3, 9.3]]) P.pathLight(b, x, z);
+  // a kite caught in the birch, chalk on the path, a scooter
+  b.box(-9.9, -9.3, 4.6, 5.3, -8.3, -8.26, C.red, { rot: [0, 0, 0.78], layer: 'sway' }); b.beam([-9.6, 4.6, -8.3], [-9.0, 3.2, -8.0], 0.01, C.white, { seg: 3 });
+  b.block(5.0, 5.15, 0, 0.8, 8.0, 8.1, C.metal, { climb: false }); b.box(4.6, 5.5, 0.05, 0.1, 7.98, 8.12, C.teal); b.box(4.85, 5.3, 0.78, 0.84, 7.9, 8.2, C.dark);
   W.addItem('ribbon', 'outside', b.p(-6.6, 0, 6.3));
   W.addItem('mitten', 'outside', b.p(-5.6, 0.18, -3.6));
   b.finish();
@@ -339,8 +397,7 @@ function pondGarden(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-11.6, -5.3, -4.6, 1.6], [3.6, 8.4, 5.4, 9.6]])(x, z) && pondExcl([[0.5, 2.2, 4.6, 3.1]])(x, z);
   P.patches(b, rand, 10, -11, 11, -10, 10.5, ok, [C.moss, C.grassD]);
   P.tufts(b, rand, 150, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: '#e9e2d2', roof: '#4f5d68', trim: C.barkD, base: C.stoneD, windows: [[-9, -6, 1.2, 3.2], [-1.5, 1.5, 0.5, 3.2], [6, 9, 1.2, 3.2]] });
-  for (const x of [-11.9, -4, 3.5, 11.6]) b.box(x, x + 0.25, 0, 5.4, -11.05, -10.95, C.barkD);
+  P.house(b, { wall: '#e9e2d2', roof: '#4f5d68', trim: C.barkD, base: C.stoneD, style: 'timber', windows: [[-9, -6.4, 1.2, 3.2], [-1.3, 1.3, 0.6, 3.2], [6.3, 8.8, 1.2, 3.2]], curtains: '#f6f1e4' });
   pond(W, b, 0.5, 2.2, 4.6, 3.1, { lilies: 7, rim: C.stoneD });
   // arched bridge
   [0.16, 0.34, 0.5, 0.58, 0.5, 0.34, 0.16].forEach((h, i) => {
@@ -381,7 +438,19 @@ function pondGarden(W, b, rand, out) {
   P.tree(b, 10.2, -9.4, { kind: 'pine', h: 1.6, r: 0.3, scale: 0.9 });
   P.rock(b, -4.6, 6.6, 0.6, C.stoneD); P.rock(b, -5.4, 7.2, 0.35); P.rock(b, 9.8, 2.4, 0.5, C.stoneD);
   P.flowers(b, rand, -8.6, 8.6, 1.2, 14, [C.purple, C.white, '#b9c7ee']);
+  const calm = [C.purple, C.white, '#b9c7ee', C.pink];
+  P.border(b, rand, -5.0, 11.4, -10.75, -9.9, 22, ['fern', 'mound', 'spike', 'fern', 'grass'], calm);
+  P.border(b, rand, 10.5, 11.5, -8, 0.6, 10, ['fern', 'mound', 'spike'], calm);
+  P.border(b, rand, 10.5, 11.5, 2.8, 10.8, 9, ['fern', 'grass', 'mound'], calm);
+  P.border(b, rand, -11, -2.6, 10.2, 11.0, 12, ['fern', 'mound', 'spike'], calm);
+  P.border(b, rand, 0.2, 10.5, 10.2, 11.0, 13, ['fern', 'mound', 'grass'], calm);
+  P.border(b, rand, -5.0, 6.0, -1.6, -0.9, 9, ['spike', 'grass', 'fern'], [C.purple, '#b9c7ee']);
+  P.border(b, rand, -4.6, 5.6, 5.4, 6.0, 8, ['grass', 'spike', 'mound'], [C.purple, C.white]);
+  for (const [x, z, r] of [[-9.6, 4.6, 0.5], [-10.4, 6.0, 0.4], [2.6, -6.6, 0.45], [3.4, -7.2, 0.3]]) { P.rock(b, x, z, r, C.stoneD); b.ball(x, r * 0.52, z, r * 0.7, C.moss, { sy: 0.3, seg: 6 }); }
   P.steppingStones(b, [[-1.4, 10.0], [-1.2, 8.2], [-1.6, 6.4]]);
+  P.clutter(b, rand, 36, -11, 11, -9.5, 10.8, ok, ['clover', 'pebble', 'mushroom', 'clover', 'leaf', 'pebble']);
+  for (const [x, z] of [[-1.9, 9.2], [-0.6, 7.3], [-2.2, 5.6], [-5.0, 2.2], [6.2, 1.9]]) P.pathLight(b, x, z);
+  P.stringLights(b, [-5.95, 3.1, -4.8], [-5.95, 3.1, 1.6], 8, 0.22, ['#ffe2b0', '#ffcf8a']);
   W.addItem('fishtoy', 'outside', b.p(4.2, 0, -1.6));
   W.addItem('flower', 'outside', b.p(-7.8, 0, 7.4));
   b.finish();
@@ -392,7 +461,7 @@ function vegGarden(W, b, rand, out) {
   const ok = rectExcl([[-2.4, 2.4, -5.4, 4.4], [-11.8, -6.2, -6.8, -0.8], [-8, -4, -11, -9.4]]);
   P.patches(b, rand, 11, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 190, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: C.brick, roof: C.slateD, base: C.brickD, door: { x: -6, color: '#5f8a5a', y: 0.2 }, windows: [[-1.5, 0.8, 1.4, 3.1], [5, 8, 1.4, 3.1]] });
+  P.house(b, { wall: C.brick, roof: C.slateD, base: C.brickD, style: 'brick', door: { x: -6, color: '#5f8a5a', y: 0.2, porch: C.slateD }, windows: [[-1.5, 0.8, 1.4, 3.1], [5, 8, 1.4, 3.1]], shutters: C.white, boxes: [0, 1], chimney: 9.6, pipe: -9.4 });
   b.block(-7.2, -4.8, 0, 0.2, -11, -9.8, C.stone, { climb: false });
   W.addBowl('food', 'outside', b.p(-4.1, 0, -10.2));
   W.addBowl('water', 'outside', b.p(-3.5, 0, -10.4));
@@ -433,6 +502,20 @@ function vegGarden(W, b, rand, out) {
   for (const [x, z] of [[-7.1, 8.3], [-8.6, 8.6], [-6.8, 6.6]]) b.ball(x, 0.1, z, 0.1, C.red, { seg: 6 });
   for (let i = 0; i < 6; i++) { const z = -9 + i * 1.5; b.box(11.1, 11.16, 0, 1.9 + (i % 2) * 0.2, z, z + 0.06, C.leafD, { layer: 'sway' }); b.cyl(11.1, 1.9 + (i % 2) * 0.2, 2.0 + (i % 2) * 0.2, z, 0.34, 0.34, C.yellow, { seg: 9, rot: [0, 0, 1.2], layer: 'sway' }); b.ball(10.95, 1.95 + (i % 2) * 0.2, z, 0.16, C.barkD, { seg: 6, layer: 'sway' }); }
   P.steppingStones(b, [[-6, -9.0], [-5.2, -7.6], [-4.4, -6.2], [-3.6, 9.9], [-3.4, 8.4], [-3.2, 6.6]]);
+  const kitchen = [C.orange, C.yellow, C.red, C.white];
+  P.border(b, rand, -2.6, 9.4, -10.75, -9.9, 20, ['rose', 'mound', 'tulip', 'daisy', 'spike'], kitchen);
+  P.border(b, rand, 3.0, 4.2, -5.4, 4.4, 10, ['tulip', 'mound', 'daisy'], kitchen);
+  P.border(b, rand, -11.5, -10.6, 3.4, 10.8, 9, ['mound', 'fern', 'grass'], kitchen);
+  P.border(b, rand, -11, -5, 10.3, 11.0, 9, ['tulip', 'daisy', 'mound'], kitchen);
+  P.border(b, rand, -2.6, 10.5, 10.3, 11.0, 15, ['tulip', 'daisy', 'mound', 'sunflower'], kitchen);
+  P.border(b, rand, 9.2, 10.4, -8.4, 5.5, 8, ['sunflower', 'mound'], kitchen);
+  P.clutter(b, rand, 40, -11, 11, -9.5, 10.8, ok, ['daisy', 'clover', 'dandelion', 'pebble', 'butter', 'leaf']);
+  P.stringLights(b, [-6.38, 2.5, -6.5], [-6.38, 2.5, -1.1], 8, 0.2);
+  for (const [x, z] of [[-5.5, -8.4], [-4.0, -5.4], [-3.9, 7.6], [-2.8, 9.4]]) P.pathLight(b, x, z);
+  // cloches, a trug of vegetables, stacked pots
+  for (const [x, z] of [[-1.5, 2.4], [1.2, 3.6]]) b.ball(x + 2.6, 0.2, z, 0.26, '#cfe9ef', { sy: 0.9, seg: 7, layer: 'water' });
+  b.block(3.4, 4.2, 0, 0.26, 5.6, 6.1, C.woodL, { climb: false }); for (let k = 0; k < 4; k++) b.ball(3.55 + k * 0.17, 0.3, 5.85, 0.1, [C.orange, C.red, '#a9c765', C.orange][k], { seg: 5 });
+  for (let k = 0; k < 3; k++) b.cyl(1.4, k * 0.22, k * 0.22 + 0.26, -9.9, 0.2 - k * 0.03, 0.16 - k * 0.03, C.terracotta, { seg: 7 });
   W.addItem('acorn', 'outside', b.p(-7.4, 0, 5.8));
   W.addItem('cloth', 'outside', b.p(6.2, 0, 3.0));
   b.finish();
@@ -451,7 +534,7 @@ function wildGarden(W, b, rand, out) {
       b.cone(x, 0, 0.5 + rand() * 0.45, z, 0.09, ['#8fb04c', '#a5c05a', '#7da243', '#b9c56a'][i % 4], { seg: 4, layer: 'sway', sway: 1.4 });
     }
   }
-  P.house(b, { wall: '#b9c0ae', roof: '#7d8a6a', base: '#9aa392', door: { x: 4, color: '#7a6a5a' }, windows: [[-3, -0.5, 1.4, 3.0], [7.5, 9.8, 1.4, 3.0]] });
+  P.house(b, { wall: '#b9c0ae', roof: '#7d8a6a', base: '#9aa392', style: 'stone', door: { x: 4, color: '#7a6a5a' }, windows: [[-3, -0.5, 1.4, 3.0], [7.5, 9.8, 1.4, 3.0]], curtains: null, chimney: -8.5, smokey: false, pipe: 11.2 });
   for (let i = 0; i < 16; i++) b.ball(-11 + rand() * 7, 0.5 + rand() * 3.4, -10.9, 0.45 + rand() * 0.35, i % 2 ? C.leafD : C.leaf, { sz: 0.3, layer: 'sway', sway: 0.15, seg: 6 });
   b.box(7.4, 9.9, 1.9, 2.1, -10.92, -10.86, C.woodD, { rot: [0, 0, 0.12] }); b.box(7.4, 9.9, 2.5, 2.7, -10.92, -10.86, C.wood, { rot: [0, 0, -0.1] });
   // potting shed
@@ -489,6 +572,14 @@ function wildGarden(W, b, rand, out) {
   P.rock(b, -5.4, -2.6, 0.55, C.stoneD); P.rock(b, 9.6, 10.2, 0.4);
   P.flowers(b, rand, -4, -6.5, 1.5, 20, [C.yellow, C.white, C.yellow]);
   P.flowers(b, rand, 9, 0.2, 1.2, 14, [C.purple, C.pink]);
+  const meadow = [C.purple, C.pink, C.white, C.yellow, C.red, '#b9c7ee'];
+  P.border(b, rand, -11.3, 11.3, -10.6, 11, 120, ['spike', 'grass', 'daisy', 'fern', 'mound', 'daisy', 'grass'], meadow, ok);
+  P.border(b, rand, -7, 11.4, -10.75, -9.9, 16, ['fern', 'spike', 'grass', 'mound'], meadow);
+  P.clutter(b, rand, 60, -11, 11, -9.5, 10.8, ok, ['mushroom', 'dandelion', 'leaf', 'pebble', 'butter', 'daisy', 'clover']);
+  // a jam-jar lantern someone left, an old wheel, a forgotten boot
+  b.cyl(-6.3, 0, 0.3, -4.6, 0.11, 0.11, '#ffffff', { seg: 7, layer: 'glow' }); b.cyl(-6.3, 0.3, 0.34, -4.6, 0.12, 0.12, C.metal, { seg: 7 });
+  b.cyl(3.4, 0.05, 0.13, 9.6, 0.6, 0.6, C.woodD, { seg: 12, rot: [0.3, 0, 0.2] });
+  b.block(-4.9, -4.6, 0, 0.42, 0.9, 1.3, '#5a6a4a', { climb: false }); b.box(-4.9, -4.45, 0, 0.16, 1.2, 1.6, '#5a6a4a');
   W.addItem('pinecone', 'outside', b.p(7.0, 0, -6.6));
   W.addItem('leaf', 'outside', b.p(1.6, 0, -7.0));
   W.addItem('feather', 'outside', b.p(2.8, 0, -3.2));
