@@ -510,7 +510,7 @@ function roomView(r) {
     const p = V(ox + x, y, oz + z), a = p.dot(pixel.right), b = p.dot(pixel.up);
     r0 = Math.min(r0, a); r1 = Math.max(r1, a); u0 = Math.min(u0, b); u1 = Math.max(u1, b);
   }
-  const ppu = Math.min((pixel.view.x - 28) / (r1 - r0), (pixel.view.y - 30) / (u1 - u0), 72);
+  const ppu = Math.min((pixel.view.x - 28) / (r1 - r0), (pixel.view.y - 30) / (u1 - u0), 110);
   const c = V(ox + w / 2, h / 2, oz + d / 2);
   const mid = c.clone().addScaledVector(pixel.right, (r0 + r1) / 2 - c.dot(pixel.right)).addScaledVector(pixel.up, (u0 + u1) / 2 - c.dot(pixel.up));
   return { mid, ppu };

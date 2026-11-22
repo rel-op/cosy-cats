@@ -66,7 +66,7 @@
     },
     { // 3. through the gap in the fence
       dur: 6.0, caption: "explore the neighbours' gardens",
-      setup() { day.set(0.14); family('outside', -6.4, 0, 5.0, -1.4); this.r = route([[-10.6, 5.95], [-14.2, 5.95], [-17.2, 3.4], [-19.6, 1.4]], 0.9); },
+      setup() { day.set(0.14); family('outside', -6.4, 0, 5.0, -1.4); this.r = route([[-10.6, 5.95], [-14.0, 5.95], [-14.6, 3.4], [-18.4, 2.4], [-19.8, 1.2]], 0.9); },
       tick() { walk('v1', mama, this.r); },
     },
     { // 4. up the oak and into the treehouse
@@ -108,13 +108,13 @@
     },
     { // 9. two players on the trampoline
       dur: 6.4, caption: 'play together',
-      setup() { day.set(0.25); kittens(['tortie', 'white']); family('outside', -13.2, 0, 5.2, -1.57); place(cats[1], -13.4, 0, 6.3, -1.57); place(cats[2], -12.0, 0, 6.8, -1.57); },
+      setup() { day.set(0.25); G.api_setMama('ginger'); kittens(['tortie', 'white']); family('outside', -13.2, 0, 5.2, -1.57); place(cats[1], -13.4, 0, 6.3, -1.57); place(cats[2], -12.0, 0, 6.8, -1.57); },
       tick(t) {
         at('join', t, 0.05, () => tap('v2', 'meow'));
         if (t < 0.2) return;
         const k = cats[1];
         for (const [id, c, tz] of [['v1', mama, 5.2], ['v2', k, 5.9]]) {
-          if (c.pos.y < 0.5 && c.grounded) dev(id, toward(c, -16.6, tz));
+          if (c.state === 'climb' || (c.pos.y < 0.5 && c.grounded)) dev(id, toward(c, -16.6, tz));
           else if (c.grounded && c.pos.y > 0.5) dev(id, { ...toward(c, -16.6 + (id === 'v1' ? 0.3 : -0.5), tz, 0.5), jump: true });
           else dev(id, toward(c, -16.6 + (id === 'v1' ? 0.3 : -0.5), tz, 0.35));
         }

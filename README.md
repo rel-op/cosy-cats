@@ -1,6 +1,8 @@
 # Cosy Cats
 
-A small sandbox game for a young child: be a mama cat or her kitten, wander a back garden, and curl up somewhere for the night. No goals, no scoring, nothing to fail.
+A small, goal-free game: be a mother cat or one of her kittens, wander your home, your garden and the neighbours' gardens, and curl up somewhere for the night. No scoring, no threat, nothing to fail.
+
+`trailer.mp4` in this folder shows it in motion.
 
 ## Run
 
@@ -9,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Then open the address it prints (usually http://localhost:5173).
+Then open the address it prints (usually http://localhost:5173). It works with gamepads and the keyboard, one or two players on one screen.
 
 ## Controls
 
@@ -17,18 +19,39 @@ Then open the address it prints (usually http://localhost:5173).
 |---|---|---|
 | Walk and climb | Stick | Arrows / WASD |
 | Jump | A | Space |
-| Pick up, hop on, curl up | X or B | E |
-| Meow (calls the other cat) | Y | Q |
+| Pick up, eat, hop on, curl up | X or B | E |
+| Meow (the others answer and come over) | Y | Q |
 | Swap cats | LB / RB | Tab |
+| Choose cats | Start | Enter |
 
-- The first device to press something plays mama. A second gamepad (or the keyboard) can join at any time and takes the kitten.
-- Walk into something and hold the stick to climb it. Mama climbs anything; the kitten manages low things and rides on mama's back for the rest.
-- Curl up together anywhere and the cats sleep until morning. Things carried to a bed stay there.
-- `T` skips ahead towards night, `H` shows the controls again.
+- The first device to press something plays mama. A second gamepad (or the keyboard) can join at any time and takes a kitten.
+- Walk into something and keep pushing to climb it. Mama climbs anything; kittens manage low things and ride on her back for the rest.
+- Walking into a small space (the cat flap, the cardboard box, a shed door, the hollow log) takes the whole family inside.
+- Curl up together anywhere and everyone sleeps until morning. The game reopens where the family last slept.
+- The "choose cats" panel changes coats, adds or removes kittens (up to four) and turns the sound words and music on or off. Nothing resets.
+- `T` skips ahead towards night.
+
+## The place
+
+Five back gardens in a row, each different, joined by gaps in their fences and by a lane along the front:
+
+- **Home:** patio, cardboard box, a tree with a fork to sleep in, a log store with hay, a pond. Through the cat flap is the sitting room with a fire, a cat tree and food.
+- **Next door, left:** an oak with a treehouse, a trampoline, a swing, a sandpit, a paddling pool and a picnic.
+- **Far left:** a koi pond with a red bridge, a tea house, bamboo and a maple.
+- **Next door, right:** vegetable beds, a greenhouse, a scarecrow, and food left out by the back door.
+- **Far right:** an overgrown garden with long grass, a potting shed, a hollow log and an upturned boat.
 
 ## Code
 
-- `src/main.js` game loop, players, the "do" button, the follower cat, sleeping, camera
-- `src/cat.js` the procedural cat model, its animation and movement
-- `src/world.js` the garden, its colliders, beds and things to carry
-- `src/daynight.js`, `src/labels.js`, `src/sound.js`, `src/fx.js`, `src/input.js` lighting, floating words, sounds, particles, input
+- `src/main.js` game loop, players, the "do" button, followers, doorways, sleeping, camera
+- `src/cat.js` the procedural cat, its coats, animation and movement
+- `src/world.js`, `src/rooms.js`, `src/props.js`, `src/critters.js` gardens, interiors, scenery pieces, wildlife
+- `src/pixel.js` the pixel-art renderer (low-resolution render, outlines, glow, palette, iris wipes)
+- `src/build.js` shared materials and the builder that bakes scenery into a few meshes
+- `src/daynight.js`, `src/audio.js`, `src/labels.js`, `src/fx.js`, `src/menu.js`, `src/input.js` light, sound, floating words, particles, the cat chooser, input
+
+## Tools
+
+- `node tools/gen-audio.mjs` generates the sound effects, ambience and music with ElevenLabs (needs `ELEVENLABS_API_KEY` in `.env.local`).
+- `node tools/play.mjs <script.js>` drives the game in headless Chrome for tests and screenshots.
+- `node tools/trailer.mjs` films `trailer.mp4`; the shots are scripted in `tools/director.js`. The dev server must be running.

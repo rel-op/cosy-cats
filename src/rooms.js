@@ -120,7 +120,7 @@ export function buildRooms(W, scene) {
 
   // ---------- inside the cardboard box ----------
   {
-    const b = room('box', { w: 3.2, d: 2.6, h: 1.5, floor: C.cardD, wall: C.card, cap: '#8a6c44', light: { hemi: ['#ffe2b0', '#7a5a3a', 0.95, 0.42], sun: ['#fff0d0', 1.3, 0.3], bg: ['#3a2a1e', '#22180f'] } });
+    const b = room('box', { w: 3.2, d: 2.6, h: 1.5, floor: C.cardD, wall: C.card, cap: '#8a6c44', light: { hemi: ['#ffe2b0', '#7a5a3a', 0.95, 0.62], sun: ['#fff0d0', 1.3, 0.45], bg: ['#3a2a1e', '#22180f'] } });
     for (let x = 0.2; x < 3.2; x += 0.24) b.box(x, x + 0.03, 0, 1.5, 0, 0.02, tint(C.card, -0.05));
     for (let z = 0.2; z < 2.6; z += 0.24) b.box(0, 0.02, 0, 1.5, z, z + 0.03, tint(C.card, -0.05));
     b.box(1.2, 2.0, 0, 0.62, 0, 0.03, '#ffe9b8', { layer: 'lit' });
@@ -128,6 +128,10 @@ export function buildRooms(W, scene) {
     b.box(0.5, 2.9, 0, 0.05, 0.9, 2.4, '#b9a2ee', { r: 0.02 }); b.box(0.6, 2.8, 0.05, 0.07, 1.0, 1.25, C.white); b.box(0.6, 2.8, 0.05, 0.07, 2.05, 2.3, C.white);
     for (const [x, y] of [[0.5, 1.0], [2.6, 0.8], [1.9, 1.2]]) b.box(x, x + 0.08, y, y + 0.08, 0, 0.03, '#fff3c8', { layer: 'lit' });
     b.box(0, 0.03, 0.9, 1.0, 1.4, 1.5, '#fff3c8', { layer: 'lit' });
+    b.box(0.5, 0.56, 0.5, 1.1, 0, 0.03, '#8a6c44'); b.box(0.38, 0.68, 1.0, 1.1, 0, 0.03, '#8a6c44', { rot: [0, 0, 0.6] }); b.box(0.38, 0.68, 1.0, 1.1, 0, 0.035, '#8a6c44', { rot: [0, 0, -0.6] });
+    b.box(2.2, 3.0, 0.75, 0.95, 0, 0.03, '#e9dcc0'); b.box(0, 0.03, 0.3, 0.42, 0.3, 2.3, '#e9dcc0');
+    for (const [x, z, r, c] of [[0.6, 1.8, 0.3, '#f2c9a0'], [0.95, 2.1, 0.22, '#d98a8a']]) b.ball(x, r * 0.4, z, r, c, { sy: 0.5, seg: 7 });
+    b.cyl(2.75, 0.07, 0.11, 2.1, 0.16, 0.16, C.white, { seg: 8 }); b.ball(2.75, 0.14, 2.1, 0.06, '#9a6a42', { seg: 5 });
     W.addBed('boxbed', 'box', b.p(1.7, 0.06, 1.65), 1.0);
     W.addItem('wool', 'box', b.p(2.6, 0.06, 1.2));
     b.finish();
@@ -154,6 +158,14 @@ export function buildRooms(W, scene) {
     b.block(0.4, 1.3, 0, 0.5, 1.8, 2.5, C.card);
     b.box(2.95, 3.05, 2.2, 2.8, 2.4, 2.5, C.dark); b.box(2.82, 3.18, 1.9, 2.25, 2.3, 2.6, '#ffd98a', { layer: 'lit' });
     lamp(b, 3.0, 1.8, 2.45, '#ffb860', 12, 8);
+    for (const [x, hgt, c] of [[2.7, 0.7, C.metal], [3.1, 0.9, C.woodD], [3.5, 0.6, C.metal], [5.3, 0.8, C.woodL]]) { b.box(x, x + 0.06, 1.25, 1.25 + hgt, 0.02, 0.07, c); b.box(x - 0.1, x + 0.16, 1.15, 1.27, 0.02, 0.08, C.dark); }
+    for (let k = 0; k < 5; k++) { b.beam([0.9 + k * 0.45, 2.75, 0.5], [0.9 + k * 0.45, 2.45, 0.5], 0.01, C.hay, { seg: 3 }); b.ball(0.9 + k * 0.45, 2.3, 0.5, 0.11, k % 2 ? '#8fa86a' : '#a58fb8', { sy: 1.5, seg: 5 }); }
+    b.beam([0, 2.75, 0.5], [6, 2.75, 0.5], 0.06, C.woodD);
+    b.box(1.5, 3.9, 0, 0.014, 2.6, 4.3, '#8a5a5a'); b.box(1.7, 3.7, 0.014, 0.018, 2.8, 4.1, '#a87a6a');
+    b.block(0.3, 1.0, 0, 0.45, 4.2, 4.8, C.woodD); b.block(0.4, 0.9, 0.45, 0.8, 4.3, 4.7, C.wood);
+    for (let k = 0; k < 3; k++) b.cyl(2.0 + k * 0.05, k * 0.2, k * 0.2 + 0.24, 0.5, 0.19 - k * 0.025, 0.15 - k * 0.025, C.terracotta, { seg: 7 });
+    b.cyl(5.5, 0, 0.36, 2.2, 0.2, 0.17, C.metal, { seg: 8 }); b.box(0.02, 0.05, 1.0, 1.9, 2.0, 2.6, '#f2e6cc'); b.box(0.04, 0.06, 1.1, 1.8, 2.1, 2.5, '#7fa35a');
+    for (const [x, z] of [[5.6, 4.6], [0.25, 0.25]]) { b.beam([x, 2.8, z], [x - 0.5, 2.3, z - 0.02], 0.006, '#e9e6dc', { seg: 3 }); b.beam([x, 2.8, z], [x - 0.02, 2.3, z - 0.5 * (z > 1 ? 1 : -1)], 0.006, '#e9e6dc', { seg: 3 }); }
     W.addItem('pinecone', 'shed', b.p(2.2, 0, 2.2));
     W.addItem('cloth', 'shed', b.p(3.6, 0, 4.2));
     b.finish();
@@ -181,6 +193,11 @@ export function buildRooms(W, scene) {
     for (let k = 0; k < 3; k++) { b.box(0.15, 0.85, 0.76, 0.84, 2.5 + k * 0.6, 2.95 + k * 0.6, C.dark); for (let j = 0; j < 3; j++) b.ball(0.3 + j * 0.2, 0.9, 2.72 + k * 0.6, 0.08, C.leafL, { seg: 5 }); }
     b.cyl(6.6, 0, 0.1, 3.6, 0.5, 0.5, '#5f8a5a', { seg: 12 }); b.cyl(6.6, 0.1, 0.2, 3.6, 0.4, 0.4, '#6f9a6a', { seg: 12 }); b.solid(6.1, 7.1, 0, 0.2, 3.1, 4.1, { climb: false });
     for (const [x, z] of [[3.2, 3.4], [4.0, 3.9], [2.6, 3.9]]) { b.cyl(x, 0, 0.3, z, 0.2, 0.16, C.terracotta, { seg: 7 }); b.ball(x, 0.5, z, 0.25, C.leafL, { layer: 'sway', sway: 0.2, seg: 6 }); b.solid(x - 0.18, x + 0.18, 0, 0.3, z - 0.18, z + 0.18, { climb: false }); }
+    for (const [x, z] of [[1.6, 0.25], [3.4, 0.25], [5.2, 0.25], [7.0, 0.25]]) { b.beam([x, 2.72, z], [x, 2.25, z], 0.008, C.dark, { seg: 3 }); b.cyl(x, 2.05, 2.25, z, 0.2, 0.13, C.terracotta, { seg: 7 }); for (let k = 0; k < 6; k++) b.ball(x + Math.cos(k * 1.1) * 0.2, 2.1 - (k % 3) * 0.18, z + Math.abs(Math.sin(k * 1.1)) * 0.22, 0.13, k % 2 ? C.leaf : C.leafL, { seg: 5, layer: 'sway', sway: 0.5 }); b.ball(x + 0.12, 2.3, z + 0.15, 0.07, [C.pink, C.purple, C.red, C.yellow][Math.round(x) % 4], { seg: 5 }); }
+    for (let k = 0; k < 9; k++) b.ball(0.08, 0.9 + (k % 4) * 0.45, 0.4 + k * 0.48, 0.16, k % 2 ? C.leaf : C.leafD, { sx: 0.5, seg: 5, layer: 'sway', sway: 0.3 });
+    for (const [x, z, c] of [[5.3, 3.9, '#d9c9a3'], [5.6, 3.5, '#cdbb93']]) b.ball(x, 0.2, z, 0.4, c, { sy: 0.5, seg: 7 });
+    b.cyl(4.6, 0, 0.38, 1.6, 0.22, 0.19, '#6d9a8a', { seg: 8 }); b.beam([4.78, 0.3, 1.6], [5.15, 0.48, 1.6], 0.04, '#6d9a8a');
+    for (const [x, z] of [[3.5, 1.7], [6.9, 2.3]]) { b.cyl(x, 0, 0.5, z, 0.3, 0.25, C.terracotta, { seg: 8 }); for (let k = 0; k < 5; k++) b.ball(x + Math.cos(k * 1.3) * 0.22, 0.75 + (k % 3) * 0.3, z + Math.sin(k * 1.3) * 0.22, 0.24, k % 2 ? '#5d9a48' : '#7fb558', { seg: 6, layer: 'sway', sway: 0.3 }); b.ball(x, 1.5, z, 0.12, C.yellow, { seg: 6 }); b.solid(x - 0.26, x + 0.26, 0, 0.5, z - 0.26, z + 0.26, { climb: false }); }
     W.addItem('flower', 'greenhouse', b.p(4.8, 0, 2.2));
     W.addBowl('water', 'greenhouse', b.p(1.4, 0, 3.9));
     b.finish();
@@ -208,6 +225,12 @@ export function buildRooms(W, scene) {
     b.block(0.2, 1.3, 0, 0.5, 0.2, 0.9, C.blue); b.box(0.2, 1.3, 0.5, 0.56, 0.2, 0.9, C.navy); b.solid(0.2, 1.3, 0.5, 0.56, 0.2, 0.9);
     b.ball(0.75, 0.78, 0.55, 0.2, '#b98a5a', { seg: 7 }); b.ball(0.75, 1.05, 0.55, 0.15, '#b98a5a', { seg: 7 }); b.ball(0.64, 1.18, 0.55, 0.05, '#b98a5a', { seg: 5 }); b.ball(0.86, 1.18, 0.55, 0.05, '#b98a5a', { seg: 5 });
     b.beam([1.2, 0, 4.0], [1.5, 1.0, 3.8], 0.03, C.dark); b.beam([1.8, 0, 4.0], [1.5, 1.0, 3.8], 0.03, C.dark); b.beam([1.5, 0, 3.5], [1.5, 1.0, 3.8], 0.03, C.dark); b.beam([1.2, 0.95, 4.0], [1.9, 1.3, 3.5], 0.07, C.brickD);
+    b.block(1.6, 2.4, 0, 0.7, 0.15, 0.5, C.woodD); for (let k = 0; k < 5; k++) b.box(1.65 + k * 0.15, 1.77 + k * 0.15, 0.36, 0.64 + (k % 2) * 0.04, 0.2, 0.5, [C.red, C.teal, C.yellow, C.navy, C.purple][k]); b.box(1.62, 2.38, 0.3, 0.34, 0.15, 0.52, C.woodL);
+    b.ball(1.4, 0.3, 3.0, 0.5, '#7fa3c7', { sy: 0.6, seg: 8 }); b.solid(1.0, 1.8, 0, 0.28, 2.6, 3.4, { climb: false });
+    for (const [x, y] of [[0.5, 1.6], [1.4, 1.9], [4.5, 2.2], [3.0, 2.3]]) b.ball(x, y, 0.05, 0.07, '#fff3c8', { seg: 4, layer: 'lit' });
+    b.box(0.02, 0.05, 0.9, 1.7, 0.5, 1.7, '#e9dcc0'); b.box(0.04, 0.06, 1.0, 1.3, 0.7, 1.2, '#8fba58'); b.box(0.04, 0.06, 1.2, 1.55, 1.1, 1.5, '#7fb3d2');
+    for (let k = 0; k < 8; k++) b.cone(0.5 + k * 0.55, 2.38, 2.56, 0.05, 0.11, [C.red, C.yellow, C.blue, C.white][k % 4], { seg: 3 });
+    b.block(4.2, 4.8, 0, 0.5, 3.6, 4.3, C.card); b.box(4.3, 4.7, 0.5, 0.8, 3.7, 4.2, C.cardD); b.cone(4.5, 0.8, 1.1, 3.95, 0.2, C.red, { seg: 4 });
     W.addItem('mitten', 'treehouse', b.p(2.2, 0, 3.2));
     W.addBall('treehouse', b.p(2.8, 0, 3.4), C.yellow, 0.14);
     b.finish();
@@ -234,6 +257,10 @@ export function buildRooms(W, scene) {
     lamp(b, 5.85, 0.7, 1.4, '#ffd08a', 12, 8);
     b.block(0.5, 1.3, 0, 0.5, 0.3, 0.9, C.barkD); b.cyl(0.9, 0.5, 0.62, 0.6, 0.2, 0.16, '#5a7a8a', { seg: 7 }); b.cyl(0.9, 0.62, 0.95, 0.6, 0.04, 0.05, C.bark, { seg: 5 }); b.ball(0.85, 1.05, 0.6, 0.26, C.pine, { sy: 0.6, seg: 7 }); b.ball(1.05, 0.95, 0.65, 0.16, C.leaf, { sy: 0.6, seg: 6 });
     b.box(2.6, 3.4, 0.8, 2.3, 0.03, 0.05, '#f6f1e4'); b.box(2.75, 3.25, 1.1, 2.0, 0.05, 0.06, '#3d4450'); b.box(2.55, 3.45, 2.3, 2.36, 0.03, 0.07, C.barkD);
+    b.block(4.6, 6.3, 0, 0.12, 0.05, 0.9, C.barkD, { climb: false }); b.cyl(5.0, 0.12, 0.42, 0.45, 0.07, 0.1, '#5a7a8a', { seg: 7 }); for (let k = 0; k < 4; k++) b.ball(5.0 + Math.cos(k * 1.6) * 0.1, 0.55 + k * 0.1, 0.45 + Math.sin(k * 1.6) * 0.08, 0.06, k % 2 ? C.pink : C.white, { seg: 5 }); b.box(4.98, 5.02, 0.4, 0.9, 0.43, 0.47, C.barkD);
+    for (let k = 0; k < 3; k++) { b.box(1.4 + k * 0.5, 1.86 + k * 0.5, 0, 1.5, 4.5 - k * 0.12, 4.56 - k * 0.12, '#efe6d0', { rot: [0, k % 2 ? 0.5 : -0.5, 0] }); b.box(1.5 + k * 0.5, 1.76 + k * 0.5, 0.5, 1.2, 4.44 - k * 0.12, 4.47 - k * 0.12, ['#c8553d', '#5a7a8a', '#8fba58'][k], { rot: [0, k % 2 ? 0.5 : -0.5, 0] }); }
+    b.box(0.02, 0.05, 0.9, 1.6, 3.4, 4.6, '#f6f1e4'); b.ball(0.06, 1.25, 4.0, 0.22, '#e8643c', { sx: 0.2, sy: 0.5, seg: 7 }); b.ball(0.06, 1.3, 3.7, 0.1, '#e8643c', { sx: 0.2, seg: 5 });
+    for (const [x, z] of [[3.0, 4.2], [0.9, 2.2]]) { b.cyl(x, 0, 0.5, z, 0.16, 0.2, '#fff0c8', { seg: 8, layer: 'lit' }); b.cyl(x, 0.5, 0.54, z, 0.2, 0.2, C.barkD, { seg: 8 }); b.cyl(x, 0, 0.04, z, 0.2, 0.2, C.barkD, { seg: 8 }); }
     W.addBowl('milk', 'teahouse', b.p(1.5, 0, 4.2));
     W.addItem('ribbon', 'teahouse', b.p(3.6, 0, 3.9));
     b.finish();
@@ -241,7 +268,7 @@ export function buildRooms(W, scene) {
 
   // ---------- inside the hollow log ----------
   {
-    const b = room('burrow', { w: 4.4, d: 3, h: 1.6, floor: '#5e4334', wall: '#6e4e3a', cap: '#3a2a20', light: { hemi: ['#d9c9a0', '#4a3a2a', 0.62, 0.34], sun: ['#ffe2b0', 0.8, 0.15], bg: ['#1c1712', '#0f0c09'] } });
+    const b = room('burrow', { w: 4.4, d: 3, h: 1.6, floor: '#5e4334', wall: '#6e4e3a', cap: '#3a2a20', light: { hemi: ['#e2d2a8', '#5a4632', 0.85, 0.5], sun: ['#ffe2b0', 1.0, 0.3], bg: ['#1c1712', '#0f0c09'] } });
     for (let x = 0.3; x < 4.4; x += 0.55) b.box(x, x + 0.06, 0, 1.6, 0, 0.03, '#5a3f2f');
     for (let z = 0.3; z < 3; z += 0.55) b.box(0, 0.03, 0, 1.6, z, z + 0.06, '#5a3f2f');
     b.box(0, 0.03, 0, 1.0, 1.0, 2.0, '#cfe3b0', { layer: 'lit' });
@@ -251,6 +278,11 @@ export function buildRooms(W, scene) {
     for (const [x, z, hgt] of [[0.7, 0.4, 0.3], [1.1, 0.3, 0.2], [4.0, 0.4, 0.34], [3.7, 2.6, 0.22], [1.6, 2.7, 0.26]]) { b.cyl(x, 0, hgt, z, 0.035, 0.045, '#e9f4e0', { seg: 5, layer: 'lit' }); b.ball(x, hgt, z, 0.12, '#8ff0d0', { sy: 0.6, seg: 6, layer: 'lit' }); }
     lamp(b, 0.9, 0.5, 0.6, '#7fe0c0', 4, 5); lamp(b, 3.9, 0.5, 0.7, '#7fe0c0', 3.5, 5); lamp(b, 2.6, 1.2, 2.2, '#ffd9a0', 4, 6);
     b.beam([1.8, 1.6, 0.1], [2.3, 0.6, 0.2], 0.06, '#4a3426'); b.beam([2.3, 0.6, 0.2], [2.2, 0, 0.5], 0.04, '#4a3426'); b.beam([0.1, 1.5, 2.5], [0.5, 0.5, 2.7], 0.05, '#4a3426');
+    for (let k = 0; k < 14; k++) b.disc(0.5 + ((k * 0.73) % 3.6), 0.012, 0.4 + ((k * 1.31) % 2.3), 0.09, ['#c8553d', C.orange, '#b98a4a', '#8a6a3a'][k % 4], { seg: 5 });
+    for (const [x, z, r] of [[1.0, 2.5, 0.2], [4.1, 2.2, 0.16], [0.5, 1.9, 0.12], [3.6, 0.3, 0.14]]) b.ball(x, r * 0.4, z, r, Math.round(x * 3) % 2 ? '#8f8a80' : '#a39d90', { sy: 0.6, seg: 6 });
+    for (const [x, y, z] of [[2.0, 1.0, 0.05], [3.2, 1.2, 0.05], [0.05, 1.1, 1.0], [0.05, 0.8, 2.4], [1.2, 1.3, 0.05]]) b.ball(x, y, z, 0.035, '#fff3a0', { seg: 4, layer: 'lit' });
+    b.beam([3.0, 1.6, 0.1], [3.4, 0.9, 0.3], 0.05, '#4a3426'); b.beam([3.4, 0.9, 0.3], [3.9, 0.5, 0.2], 0.035, '#4a3426'); b.beam([0.1, 1.6, 0.6], [0.3, 0.9, 0.9], 0.04, '#4a3426');
+    b.ball(2.2, 0.06, 0.6, 0.3, '#6f9a45', { sy: 0.2, seg: 6 }); b.ball(0.8, 0.05, 1.5, 0.25, '#527d35', { sy: 0.2, seg: 6 });
     W.addItem('acorn', 'burrow', b.p(1.4, 0, 1.2));
     W.addItem('acorn', 'burrow', b.p(1.7, 0, 0.9));
     W.addItem('leaf', 'burrow', b.p(2.0, 0, 2.4));
