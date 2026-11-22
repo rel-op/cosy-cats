@@ -277,6 +277,50 @@ function leaderOf(cat) {
 // where a kitten walks in the line behind mama: 0 is first
 const rankOf = (cat) => cats.filter((c) => c.isKitten && !isHuman(c) && c.state !== 'ride').indexOf(cat);
 
+// When the player has been still for a while, a kitten wanders over to something nearby and looks back.
+const tooFar = (cat, lead) => flat(cat, lead) > 12;
+function pointsOfInterest() {
+  const r = world.region;
+  return [
+    ...world.portals.filter((p) => p.region === r).map((p) => ({ x: p.x, y: p.y, z: p.z, stop: 1.0 })),
+    ...world.bowls.filter((p) => p.region === r).map((p) => ({ x: p.x, y: p.y, z: p.z, stop: 0.6 })),
+    ...world.beds.filter((p) => p.region === r).map((p) => ({ x: p.x, y: p.y, z: p.z, stop: 0.3 })),
+    ...world.items.filter((p) => p.region === r && !p.heldBy && !p.bed).map((p) => ({ x: p.mesh.position.x, y: p.mesh.position.y - p.rest, z: p.mesh.position.z, stop: 0.45 })),
+  ];
+}
+function scout(cat, lead, a, dt) {
+  if ((a.poiCd || 0) > time) return false;
+  if (!a.poi) {
+    const near = pointsOfInterest().filter((p) => Math.abs(p.y - cat.pos.y) < 0.5 && p !== a.lastPoi).map((p) => ({ p, d: Math.hypot(p.x - lead.pos.x, p.z - lead.pos.z) })).filter((o) => o.d > 2 && o.d < 9 && !(a.lastPoi && Math.hypot(o.p.x - a.lastPoi.x, o.p.z - a.lastPoi.z) < 0.5));
+    if (!near.length) { a.poiCd = time + 6; return false; }
+    near.sort((x, y) => x.d - y.d);
+    a.poi = near[Math.floor(Math.random() * Math.min(3, near.length))].p;
+    a.poiT = 0;
+    a.poiAt = false;
+  }
+  const p = a.poi, dx = p.x - cat.pos.x, dz = p.z - cat.pos.z, d = Math.hypot(dx, dz);
+  a.poiT += dt;
+  if (d > p.stop + 0.25 && !a.poiAt) {
+    cat.allowClimb = false;
+    cat.physics(dt, (dx / d) * cat.speed * 0.8, (dz / d) * cat.speed * 0.8, false, world);
+    cat.allowClimb = true;
+    if (a.poiT > 7) { a.lastPoi = p; a.poi = null; a.poiCd = time + 5; }
+    return true;
+  }
+  if (!a.poiAt) {
+    a.poiAt = true;
+    a.poiT = 0;
+    audio.play('mew', { vol: 0.5 });
+    cat.meowT = 0.45;
+    say(cat, 'mew', 1);
+    cat.pounce = 0.7;
+  }
+  cat.physics(dt, 0, 0, false, world);
+  if (cat.pounce <= 0) cat.yaw = dampAngle(cat.yaw, Math.atan2(lead.pos.x - cat.pos.x, lead.pos.z - cat.pos.z), 4, dt);
+  if (a.poiT > 12) { a.lastPoi = p; a.poi = null; }
+  return true;
+}
+
 function ai(cat, dt, idx) {
   const a = aiState(cat);
   if (a.answer > 0) {
@@ -341,6 +385,9 @@ function ai(cat, dt, idx) {
     else if (d > 1.0) { a.ptr = lead.trailN; return cat.physics(dt, (dx / d) * cat.speed * 1.2, (dz / d) * cat.speed * 1.2, false, world); }
   }
   if (d > 13 && leadOk) return catchUp();
+  const who = players.find((q) => q.cat === lead && q.human);
+  if (cat.isKitten && rankOf(cat) === 0 && who && who.idle > 8 && leadOk && !tooFar(cat, lead) && scout(cat, lead, a, dt)) return;
+  if (a.poi) { a.poi = null; a.ptr = lead.trailN; }
   // otherwise follow in the leader's footsteps, which is how kittens end up trailing in a line
   if (a.lead !== lead) { a.lead = lead; a.ptr = lead.trailN; }
   const tr = lead.trail, first = lead.trailN - tr.length, keep = 3 + (cat.isKitten ? Math.max(0, rankOf(cat)) * 2 : 0);
@@ -386,7 +433,7 @@ function ai(cat, dt, idx) {
     }
   }
   // a kitten who can't follow looks up and mews
-  if (tooHigh || cat.scrabble > 0) {
+  if ((tooHigh && leadOk) || cat.scrabble > 0) {
     a.mewT -= dt;
     if (a.mewT <= 0) { a.mewT = 6; audio.play('mew', { vol: 0.6 }); cat.meowT = 0.45; say(cat, 'mew', 1); }
   }
@@ -650,6 +697,27 @@ function updateAudio(dt) {
   audio.update(dt);
 }
 
+// ---------- rumble: a purr you can feel ----------
+let lastBoingWord = -9;
+function pad(dev) {
+  if (!dev || !dev.id.startsWith('gp') || !navigator.getGamepads) return null;
+  const gp = navigator.getGamepads()[+dev.id.slice(2)];
+  return gp && gp.vibrationActuator ? gp.vibrationActuator : null;
+}
+function rumble(cat, weak, strong, ms) {
+  for (const p of players) {
+    if (cat && p.cat !== cat) continue;
+    const v = pad(p.dev);
+    if (v && v.playEffect) v.playEffect('dual-rumble', { duration: ms, weakMagnitude: weak, strongMagnitude: strong }).catch(() => {});
+  }
+}
+let purrT = 0;
+function updateRumble(dt) {
+  const purring = sleep.active || !!napLead();
+  purrT -= dt;
+  if (purring && purrT <= 0) { purrT = 0.24; rumble(null, sleep.active ? 0.22 : 0.14, 0.04, 130); }
+}
+
 // ---------- main loop ----------
 function step(dt) {
   time += dt;
@@ -730,9 +798,15 @@ function step(dt) {
       if (c.eatT <= 0) { c.setState('free'); fx.hearts(headPos(c), 2); }
     }
     for (const e of c.events) {
-      if (e === 'jump') { audio.play('hop', { vol: 0.35, rate: c.isKitten ? 1.3 : 1 }); if (isHuman(c)) say(c, 'hop', 4); }
-      else if (e === 'thump') { fx.poof(c.pos.clone(), 5); audio.play(region().indoor ? 'thump' : 'hop', { vol: 0.5 }); }
-      else if (e === 'boing') { audio.play('boing', { vol: 0.5, rate: c.isKitten ? 1.25 : 1 }); say(c, 'boing', 3); }
+      if (e === 'jump') { audio.play('hop', { vol: 0.35, rate: c.isKitten ? 1.3 : 1 }); if (isHuman(c) && time - (c.boingAt || -9) > 1.5) say(c, 'hop', 4); }
+      else if (e === 'thump') { rumble(c, 0.35, 0.1, 90); fx.poof(c.pos.clone(), 5); audio.play(region().indoor ? 'thump' : 'hop', { vol: 0.5 }); }
+      else if (e === 'boing') {
+        audio.play('boing', { vol: 0.32, rate: c.isKitten ? 1.25 : 1 });
+        c.boingAt = time;
+        if (world.bounced) world.bounced(c.pos);
+        if (time - lastBoingWord > 2.5) { lastBoingWord = time; say(c, 'boing', 6); }
+        rumble(c, 0.25, 0.1, 70);
+      } else if (e === 'land' && isHuman(c)) rumble(c, 0.12, 0, 40);
       else if ((e === 'climb' || e === 'top') && c === mama && mama.climbBox) {
         // mama is going up something the kittens can't manage: they hop on
         for (const k of cats) {
@@ -761,6 +835,7 @@ function step(dt) {
   day.apply(region(), cam.target, weather.rain);
   labels.update(dt, pixel);
   updateAudio(dt);
+  updateRumble(dt);
 }
 
 const render = () => pixel.render(scene, time);

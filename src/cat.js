@@ -73,6 +73,8 @@ export class Cat {
     this.asleep = false;
     this.meowT = 0;
     this.pounce = 0;
+    this.squash = 0; // > 0 squashed flat (landing), < 0 stretched tall (take-off)
+    this.airPitch = 0;
 
     this.aRun = 0;
     this.aCurl = 0;
@@ -304,6 +306,7 @@ export class Cat {
     if (this.grounded && jump) {
       this.vy = this.jumpV;
       this.grounded = false;
+      this.squash = -0.7;
       this.events.push('jump');
     }
     const prevY = y;
@@ -372,10 +375,13 @@ export class Cat {
     } else if (this.vy <= 0 && y <= sup) {
       y = sup;
       if (supC && supC.bounce && this.vy < -1.5) {
-        this.vy = Math.min(8.2, Math.max(5.5, -this.vy * 0.95 + 1.2));
+        // a steady, even bounce: the same height every time
+        this.vy = this.isKitten ? 5.4 : 6.4;
+        this.squash = 1;
         this.events.push('boing');
       } else {
         this.grounded = true;
+        this.squash = Math.min(1, 0.25 + -this.vy * 0.08);
         this.events.push(this.vy < -6 ? 'thump' : 'land');
         this.vy = 0;
       }
@@ -499,7 +505,13 @@ export class Cat {
     this.torso.scale.y = 0.2 * breathe;
     this.torso.scale.x = 0.2 * (1 + 0.12 * curl);
 
-    this.pivot.rotation.x = (-Math.PI / 2) * this.aClimb - 0.45 * scr * (1 - this.aClimb) - clamp(this.vy * 0.05, -0.3, 0.3) * this.aAir + 0.16 * this.aEat + (this.pounce > 0 ? 0.18 : 0);
+    // squash and stretch: flatten on landing, lengthen on take-off and while moving fast through the air
+    this.squash = damp(this.squash, 0, this.squash > 0 ? 9 : 6, dt);
+    const q = this.squash - this.aAir * Math.min(0.14, Math.abs(this.vy) * 0.018);
+    const wide = q > 0 ? 1 + 0.22 * q : 1 + 0.1 * q, tall = q > 0 ? 1 - 0.34 * q : 1 - 0.24 * q;
+    this.group.scale.set(this.scale * wide, this.scale * tall, this.scale * wide);
+    this.airPitch = damp(this.airPitch, clamp(this.vy * 0.045, -0.26, 0.26) * this.aAir, 9, dt);
+    this.pivot.rotation.x = (-Math.PI / 2) * this.aClimb - 0.45 * scr * (1 - this.aClimb) - this.airPitch + 0.16 * this.aEat + (this.pounce > 0 ? 0.18 : 0);
     this.pivot.position.z = -0.12 * this.aClimb;
 
     const idle = (1 - this.aRun) * (1 - curl) * (1 - this.aClimb) * (1 - this.aEat);
@@ -529,7 +541,7 @@ export class Cat {
     const show = s === 'free' && lift > 0.05;
     this.blob.visible = show;
     if (show) {
-      this.blob.position.set(this.pos.x, this.support + 0.03, this.pos.z);
+      this.blob.position.set(this.pos.x, this.support + 0.08, this.pos.z);
       this.blob.scale.setScalar(this.radius * (1.1 - Math.min(0.5, lift * 0.25)));
     }
   }

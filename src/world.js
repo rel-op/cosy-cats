@@ -353,7 +353,20 @@ function treehouseGarden(W, b, rand, out) {
   // trampoline
   const tr = b.solid(6.3, 8.7, 0, 0.6, 4.3, 6.7);
   tr.bounce = true;
-  b.cyl(7.5, 0.5, 0.6, 5.5, 1.3, 1.3, C.dark, { seg: 14 }); b.cyl(7.5, 0.52, 0.63, 5.5, 1.38, 1.38, C.blue, { seg: 14 }); b.cyl(7.5, 0.56, 0.635, 5.5, 1.1, 1.1, '#2e333c', { seg: 14 });
+  b.cyl(7.5, 0.28, 0.36, 5.5, 1.25, 1.25, '#2a2f3a', { seg: 14 });
+  b.geo(new THREE.TorusGeometry(1.26, 0.13, 6, 16).rotateX(Math.PI / 2).toNonIndexed(), C.blue, b.mat(7.5, 0.5, 5.5, 1, 0.8, 1));
+  // the mat is its own piece so it can dip and spring back when someone lands on it
+  const mat = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 0.05, 14), toon('#3a4150'));
+  mat.receiveShadow = true;
+  b.dyn(mat, 7.5, 0.58, 5.5);
+  const spring = { y: 0, v: 0, x: mat.position.x, z: mat.position.z };
+  W.bounced = (pos) => { if (Math.hypot(pos.x - spring.x, pos.z - spring.z) < 1.6) spring.v = -2.2; };
+  W.updaters.push((dt) => {
+    spring.v += (-spring.y * 180 - spring.v * 9) * dt;
+    spring.y += spring.v * dt;
+    mat.position.y = 0.58 + Math.max(-0.16, Math.min(0.03, spring.y));
+    mat.scale.set(1 - spring.y * 0.15, 1, 1 - spring.y * 0.15);
+  });
   for (let i = 0; i < 6; i++) b.cyl(7.5 + Math.cos(i * 1.047) * 1.2, 0, 0.5, 5.5 + Math.sin(i * 1.047) * 1.2, 0.05, 0.05, C.metal, { seg: 5 });
   // paddling pool
   b.cyl(8, 0, 0.22, -5.5, 1.62, 1.62, C.pink, { seg: 16 }); b.cyl(8, 0.05, 0.24, -5.5, 1.45, 1.45, C.waterL, { seg: 16 });

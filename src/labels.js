@@ -28,7 +28,14 @@ export class Labels {
     el.className = 'word';
     el.innerHTML = plain ? text : markup(text);
     this.el.appendChild(el);
-    this.words.push({ el, pos: pos.clone(), age: 0, life });
+    // don't print one word on top of another: lift the new one clear of any recent neighbours
+    const at = pos.clone();
+    for (let tries = 0; tries < 4; tries++) {
+      const clash = this.words.find((w) => w.age < 1.2 && Math.hypot(w.pos.x - at.x, w.pos.z - at.z) < 1.6 && Math.abs(w.pos.y - at.y) < 0.4);
+      if (!clash) break;
+      at.y += 0.45;
+    }
+    this.words.push({ el, pos: at, age: 0, life });
   }
 
   dot(color) {
