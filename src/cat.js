@@ -508,22 +508,47 @@ export class Cat {
     this.pounce = Math.max(0, this.pounce - dt);
     const scr = this.scrabble > 0 ? 1 : 0;
 
-    if (s === 'climb') this.phase += dt * (this.climbing ? 11 : 0);
-    else this.phase += dt * sp * (k ? 5.4 : 3.7);
+    // Gait. Everything is driven by how much ground she really covers (not how hard the stick is pushed),
+    // and a planted paw sweeps back at exactly that speed, so paws grip the ground instead of skating over it.
+    const moved = Math.hypot(this.pos.x - (this.lastX ?? this.pos.x), this.pos.z - (this.lastZ ?? this.pos.z));
+    this.lastX = this.pos.x;
+    this.lastZ = this.pos.z;
+    const ground = onGround && dt > 0 ? Math.min(this.speed * 1.5, moved / dt) : 0;
+    this.gSpeed = damp(this.gSpeed || 0, ground, 14, dt);
+    const run = Math.min(1, this.gSpeed / this.speed);
+    const L = this.legLen + 0.04; // hip to paw
+    // kittens have short legs, so they take a longer reach and a springier bound to keep their steps from blurring
+    const As = 0.42 + (k ? 0.42 : 0.3) * run; // how far a paw swings while it is on the ground
+    const duty = 0.6 - (k ? 0.32 : 0.28) * run; // the share of each stride a paw spends on the ground
+    const stride = ((2 * L * Math.tan(As)) / duty) * this.scale; // ground covered in one full cycle of the legs
+    this.gait = ((this.gait || 0) + (ground * dt) / stride) % 1;
+    if (s === 'climb') this.phase += dt * (this.climbing ? 26 : 0);
+    const going = Math.min(1, this.gSpeed / 0.5);
+    const gallop = Math.max(0, Math.min(1, (run - 0.5) / 0.35)); // a walk at low speed, a bounding run at full tilt
+    const bob = going * ((1 - gallop) * 0.012 * Math.abs(Math.sin(this.gait * TAU * 2)) + gallop * 0.045 * Math.max(0, Math.sin(this.gait * TAU + 2.2)));
+    const rock = going * gallop * 0.1 * Math.sin(this.gait * TAU + 0.5);
+    const WALK = [0.25, 0.75, 0.0, 0.5], GALLOP = [0.55, 0.66, 0.0, 0.1];
 
     const curl = this.aCurl;
     this.legs.forEach((leg, i) => {
       const front = i < 2;
       const diag = i === 0 || i === 3 ? 0 : Math.PI;
-      let a = Math.sin(this.phase + diag) * 0.75 * (this.aRun + this.aClimb * 0.8);
+      const ph = (this.gait + WALK[i] + (GALLOP[i] - WALK[i]) * gallop) % 1;
+      let th, lift = 0;
+      if (ph < duty) th = Math.atan(Math.tan(As) * (1 - (2 * ph) / duty)); // planted: sweeping back
+      else { const u = (ph - duty) / (1 - duty), e = u * u * (3 - 2 * u); th = -As + 2 * As * e; lift = Math.sin(u * Math.PI); } // lifted: reaching forward
+      // stretch or tuck the leg so a planted paw sits on the ground whatever its angle and however the body bobs
+      const len = Math.max(0.55, Math.min(1.55, ((L + bob) / (L * Math.cos(th))) * (1 - (0.3 + 0.14 * run) * lift)));
+      let a = -th * going * (1 - this.aAir) + Math.sin(this.phase + diag) * 0.6 * this.aClimb;
       a += this.aAir * (front ? -0.9 : 0.9);
       if (scr && front) a += Math.sin(t * 24 + i * Math.PI) * 0.6 - 0.9;
       if (kneading && front) a += Math.sin(t * 9 + i * Math.PI) * 0.5 - 0.3;
       leg.rotation.x = a * (1 - curl);
-      leg.scale.y = 1 - 0.72 * curl;
+      leg.scale.y = (1 + (len - 1) * going * (1 - this.aAir)) * (1 - 0.72 * curl);
     });
+    this.gaitRock = rock;
 
-    this.body.position.y = -this.bodyY + Math.abs(Math.sin(this.phase)) * 0.022 * this.aRun - this.legLen * 0.8 * curl;
+    this.body.position.y = -this.bodyY + bob - this.legLen * 0.8 * curl;
     this.body.rotation.y = this.pounce > 0 ? Math.sin(t * 22) * 0.12 : 0;
     const breathe = 1 + Math.sin(t * 1.7 + this.seed) * 0.04 * curl;
     this.torso.scale.y = 0.2 * breathe;
@@ -535,7 +560,7 @@ export class Cat {
     const wide = q > 0 ? 1 + 0.22 * q : 1 + 0.1 * q, tall = q > 0 ? 1 - 0.34 * q : 1 - 0.24 * q;
     this.group.scale.set(this.scale * wide, this.scale * tall, this.scale * wide);
     this.airPitch = damp(this.airPitch, clamp(this.vy * 0.045, -0.26, 0.26) * this.aAir, 9, dt);
-    this.pivot.rotation.x = (-Math.PI / 2) * this.aClimb - 0.45 * scr * (1 - this.aClimb) - this.airPitch + 0.16 * this.aEat + (this.pounce > 0 ? 0.18 : 0);
+    this.pivot.rotation.x = (-Math.PI / 2) * this.aClimb - 0.45 * scr * (1 - this.aClimb) - this.airPitch + this.gaitRock + 0.16 * this.aEat + (this.pounce > 0 ? 0.18 : 0);
     this.pivot.position.z = -0.12 * this.aClimb;
 
     const idle = (1 - this.aRun) * (1 - curl) * (1 - this.aClimb) * (1 - this.aEat);
