@@ -55,18 +55,18 @@ void main() {
   if (raw >= 0.9999) {
     // sky: a dithered gradient, with stars that drift with the camera
     float g = vUv.y;
-    col = mix(uSkyBot, uSkyTop, smoothstep(0.0, 1.0, g));
+    col = toSRGB(mix(uSkyBot, uSkyTop, smoothstep(0.0, 1.0, g)));
     vec2 sp = px + floor(uScroll * 0.25);
     float star = step(0.9965, hash(sp));
     float tw = 0.6 + 0.4 * sin(uTime * 2.0 + hash(sp + 3.0) * 40.0);
     col += vec3(1.0, 0.96, 0.82) * star * tw * uNight * (1.0 - uIndoor);
-    levels = 14.0;
+    levels = 16.0;
   } else {
     col = toSRGB(texture2D(tColor, vUv).rgb);
     float d = raw * uRange;
     float dl = D(vec2(-1.0, 0.0)), dr = D(vec2(1.0, 0.0)), du = D(vec2(0.0, 1.0)), dd = D(vec2(0.0, -1.0));
     float outer = clamp(dl - d, 0.0, 1.0) + clamp(dr - d, 0.0, 1.0) + clamp(du - d, 0.0, 1.0) + clamp(dd - d, 0.0, 1.0);
-    float edge = smoothstep(0.22, 0.4, outer);
+    float edge = smoothstep(0.45, 0.62, outer);
     float nearer = max(max(d - dl, d - dr), max(d - du, d - dd));
     float lap = dl + dr + du + dd - 4.0 * d;
     float flatish = 1.0 - step(0.2, nearer);
@@ -127,7 +127,7 @@ export class Pixel {
       uIris: { value: new THREE.Vector3(0, 0, -1) },
       uScroll: { value: new THREE.Vector2() },
       uIndoor: { value: 0 },
-      uLevels: { value: 22 },
+      uLevels: { value: 40 },
     };
     const quad = new THREE.Mesh(
       new THREE.PlaneGeometry(2, 2),
@@ -139,7 +139,7 @@ export class Pixel {
     this.postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
-    this.dir = new THREE.Vector3(1, 1.05, 1).normalize(); // from target towards camera
+    this.dir = new THREE.Vector3(1, 0.8165, 1).normalize(); // 30 degrees: ground lines land on a clean 2:1 pixel slope // from target towards camera
     this.right = new THREE.Vector3(1, 0, -1).normalize();
     this.up = new THREE.Vector3().crossVectors(this.right, this.dir.clone().negate()).normalize();
     this.target = new THREE.Vector3();

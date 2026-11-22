@@ -1,9 +1,9 @@
-// Input devices: the keyboard, each connected gamepad, and virtual devices for testing.
-// Every device exposes the same shape: a stick (x right, y up) and four edge-triggered buttons.
+// Input devices: the keyboard, each connected gamepad, and virtual devices for tests and the trailer.
+// Every device exposes the same shape: a stick (x right, y up) and edge-triggered buttons.
 
 const DEAD = 0.28;
 const PREVENT = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
-const BUTTONS = ['jump', 'act', 'meow', 'swap'];
+const BUTTONS = ['jump', 'act', 'meow', 'swap', 'menu'];
 
 export class Input {
   constructor() {
@@ -23,29 +23,30 @@ export class Input {
   device(id) {
     let d = this.devices.get(id);
     if (!d) {
-      d = { id, x: 0, y: 0, jump: false, act: false, meow: false, swap: false, held: {}, active: false, gone: false };
+      d = { id, x: 0, y: 0, held: {}, active: false, gone: false };
+      for (const b of BUTTONS) d[b] = false;
       this.devices.set(id, d);
     }
     return d;
   }
 
-  // Set a virtual device's raw state (used by tests): { x, y, jump, act, meow, swap }.
+  // Set a virtual device's raw state: { x, y, jump, act, meow, swap, menu }. Pass null to unplug it.
   virtual(id, raw) {
     if (raw) this.virtuals.set(id, raw);
     else this.virtuals.delete(id);
   }
 
   poll() {
-    const k = this.keys;
-    const tapped = this.tapped;
+    const k = this.keys, tapped = this.tapped;
     const has = (...codes) => codes.some((c) => k.has(c) || tapped.has(c));
     this.apply(this.device('kb'), {
       x: (has('KeyD', 'ArrowRight') ? 1 : 0) - (has('KeyA', 'ArrowLeft') ? 1 : 0),
       y: (has('KeyW', 'ArrowUp') ? 1 : 0) - (has('KeyS', 'ArrowDown') ? 1 : 0),
       jump: has('Space'),
-      act: has('KeyE', 'KeyF', 'Enter'),
+      act: has('KeyE', 'KeyF'),
       meow: has('KeyQ', 'KeyM'),
       swap: has('Tab', 'KeyR'),
+      menu: has('Enter', 'Escape'),
     });
     tapped.clear();
 
@@ -56,19 +57,12 @@ export class Input {
       const id = 'gp' + gp.index;
       seen.add(id);
       const b = (i) => !!(gp.buttons[i] && gp.buttons[i].pressed);
-      let x = gp.axes[0] || 0;
-      let y = -(gp.axes[1] || 0);
+      let x = gp.axes[0] || 0, y = -(gp.axes[1] || 0);
       if (b(14)) x = -1;
       if (b(15)) x = 1;
       if (b(12)) y = 1;
       if (b(13)) y = -1;
-      this.apply(this.device(id), {
-        x, y,
-        jump: b(0),
-        act: b(2) || b(1),
-        meow: b(3),
-        swap: b(4) || b(5),
-      });
+      this.apply(this.device(id), { x, y, jump: b(0), act: b(2) || b(1), meow: b(3), swap: b(4) || b(5), menu: b(9) || b(8) });
     }
     for (const [id, raw] of this.virtuals) {
       seen.add(id);
@@ -83,17 +77,12 @@ export class Input {
   }
 
   apply(d, raw) {
-    let x = raw.x || 0;
-    let y = raw.y || 0;
-    let m = Math.hypot(x, y);
-    if (m < DEAD) {
-      x = 0; y = 0; m = 0;
-    } else {
-      const s = Math.min(1, (m - DEAD) / (1 - DEAD)) / m;
-      x *= s; y *= s;
-    }
-    d.x = x;
-    d.y = y;
+    let x = raw.x || 0, y = raw.y || 0, m = Math.hypot(x, y);
+    if (m < DEAD) { x = 0; y = 0; m = 0; } else { const s = Math.min(1, (m - DEAD) / (1 - DEAD)) / m; x *= s; y *= s; }
+    // stick flicks, for menus
+    d.up = y > 0.6 && !(d.y > 0.6); d.down = y < -0.6 && !(d.y < -0.6);
+    d.left = x < -0.6 && !(d.x < -0.6); d.right = x > 0.6 && !(d.x > 0.6);
+    d.x = x; d.y = y;
     let any = m > 0;
     for (const name of BUTTONS) {
       const down = !!raw[name];

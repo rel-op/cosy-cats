@@ -152,6 +152,12 @@ export class Builder {
     this.geo(g, color, this.mat(x, y, z, r * sx, 1, r * sz), { layer });
   }
 
+  // a cylinder lying on its side, centred at (x, y, z)
+  lying(x, y, z, len, r, color, axis = 'x', { seg = 9, layer } = {}) {
+    const g = cached('cyl' + seg, () => new THREE.CylinderGeometry(1, 1, 1, seg));
+    this.geo(g, color, this.mat(x, y, z, r, len, r, axis === 'z' ? Math.PI / 2 : 0, 0, axis === 'x' ? Math.PI / 2 : 0), { layer });
+  }
+
   // a beam between two points
   beam(a, b, r, color, { seg = 6, layer } = {}) {
     const from = new THREE.Vector3(...a), to = new THREE.Vector3(...b);

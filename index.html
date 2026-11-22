@@ -4,28 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cosy Cats</title>
-  <link rel="stylesheet" href="/src/style.css">
 </head>
 <body>
-  <div id="sky"></div>
-  <canvas id="stars"></canvas>
   <canvas id="game"></canvas>
-  <div id="vignette"></div>
   <div id="labels"></div>
-  <div id="night"></div>
+  <div id="menu" class="hide"></div>
   <div id="toast"></div>
   <div id="title">
     <h1>cosy cats</h1>
     <p class="go">press any button</p>
-    <table class="keys">
-      <tr><th></th><th>gamepad</th><th>keyboard</th></tr>
-      <tr><td>walk and climb</td><td>stick</td><td>arrows / WASD</td></tr>
-      <tr><td>jump</td><td>A</td><td>space</td></tr>
-      <tr><td>pick up, hop on, curl up</td><td>X or B</td><td>E</td></tr>
-      <tr><td>meow</td><td>Y</td><td>Q</td></tr>
-      <tr><td>swap cats</td><td>LB / RB</td><td>tab</td></tr>
-    </table>
-    <p class="small">a second gamepad can join at any time</p>
+    <div class="keys">
+      <span>walk and climb</span><span>stick</span><span>arrows</span>
+      <span>jump</span><span>A</span><span>space</span>
+      <span>pick up, eat, hop on, curl up</span><span>X</span><span>E</span>
+      <span>meow</span><span>Y</span><span>Q</span>
+      <span>swap cats</span><span>LB RB</span><span>tab</span>
+      <span>choose cats</span><span>start</span><span>enter</span>
+    </div>
   </div>
   <script type="module" src="/src/main.js"></script>
 </body>
