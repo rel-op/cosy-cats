@@ -30,6 +30,9 @@ export const COATS = [
 export const coatById = (id) => COATS.find((c) => c.id === id) || COATS[0];
 
 const ghostMat = new THREE.MeshBasicMaterial({ color: '#6b5a7e', depthFunc: THREE.GreaterDepth, depthWrite: false });
+// Only count her as hidden when what is in front is properly in front: not the ground a paw has dipped into,
+// nor something she is brushing against. The silhouette is tested a little nearer the camera than she really is.
+ghostMat.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  mvPosition.z += 0.3;\n  gl_Position = projectionMatrix * mvPosition;'); };
 
 // A procedural cat. Local space: feet at y = 0, facing +z.
 // States: 'free' (walking, jumping), 'climb', 'curl' (lying down), 'ride' (kitten on mama's back), 'eat'.

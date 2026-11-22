@@ -257,7 +257,7 @@ function home(W, b, rand, out) {
   b.box(4.28, 5.0, 0.9, 0.93, -8.87, -7.73, C.cardD); b.box(5.02, 5.72, 0.9, 0.93, -8.87, -7.73, tint(C.card, 0.04));
   b.box(4.95, 5.07, 0.3, 0.92, -7.76, -7.72, '#e9dcc0');
   b.box(4.7, 5.3, 0.12, 0.62, -7.76, -7.71, '#3d2c22');
-  W.link('outside', b.p(5.0, 0.12, -7.42), [0, 1], 'box', W.roomDoor.box, [0, 1], 'cardboard');
+  W.link('outside', b.p(5.0, 0.12, -7.42), [0, 1], 'box', W.roomDoor.box, W.roomOut.box, 'cardboard');
   // tree with a fork to sleep in
   P.tree(b, -4.5, 1.5, { h: 2.6 });
   b.cyl(-4.5, 2.5, 2.62, 1.5, 0.66, 0.56, C.moss, { seg: 10 });
@@ -341,7 +341,7 @@ function treehouseGarden(W, b, rand, out) {
   b.cone(-0.95, 4.9, 6.0, -3.1, 2.3, C.red, { seg: 4 });
   b.box(0.5, 0.54, 3.2, 4.3, -3.5, -2.6, '#3d2c22');
   b.box(-1.6, -0.6, 3.9, 4.5, -2.0, -1.96, '#ffffff', { layer: 'glow' });
-  W.link('outside', b.p(0.92, 3.2, -3.05), [1, 0], 'treehouse', W.roomDoor.treehouse, [1, 0], 'creak');
+  W.link('outside', b.p(0.92, 3.2, -3.05), [1, 0], 'treehouse', W.roomDoor.treehouse, W.roomOut.treehouse, 'creak');
   // swing frame (the seat is in toys.js)
   for (const z of [3.2, 5.6]) { b.beam([-8.2, 0, z], [-7.6, 2.3, z], 0.06, C.metal); b.beam([-7.0, 0, z], [-7.6, 2.3, z], 0.06, C.metal); }
   b.beam([-7.6, 2.3, 3.2], [-7.6, 2.3, 5.6], 0.06, C.metal);
@@ -443,7 +443,7 @@ function pondGarden(W, b, rand, out) {
   for (const y of [1.2, 2.1, 3.0]) b.box(-6.5, -6.46, y - 0.06, y, -4.3, 1.1, C.barkD);
   b.box(-12.0, -5.9, 3.0, 3.25, -4.9, 1.7, '#4f5d68'); b.box(-11.8, -6.3, 3.25, 3.5, -4.5, 1.3, '#445059');
   b.box(-6.5, -6.44, 0.3, 2.1, -2.1, -1.1, '#3d2c22');
-  W.link('outside', b.p(-6.08, 0.3, -1.6), [1, 0], 'teahouse', W.roomDoor.teahouse, [1, 0], 'creak');
+  W.link('outside', b.p(-6.08, 0.3, -1.6), [1, 0], 'teahouse', W.roomDoor.teahouse, W.roomOut.teahouse, 'creak');
   // raked gravel with a standing stone
   b.box(3.6, 8.4, 0, 0.05, 5.4, 9.6, '#ddd8c9');
   for (let i = 1; i < 5; i++) b.cyl(6, 0.05, 0.055 + i * 0.001, 7.5, i * 0.5, i * 0.5, i % 2 ? '#cfc9b8' : '#e6e1d3', { seg: 16 });
@@ -501,7 +501,7 @@ function vegGarden(W, b, rand, out) {
   for (const z of [-6.55, -4.3, -3.1, -1.08]) b.box(-6.52, -6.42, 0.5, 2.4, z - 0.04, z + 0.04, C.white);
   b.box(-11.8, -6.4, 2.36, 2.44, -1.14, -1.02, C.white); b.box(-6.52, -6.42, 2.36, 2.44, -6.6, -1.0, C.white); b.box(-11.8, -6.4, 3.26, 3.34, -3.84, -3.76, C.white);
   for (const [x, z] of [[-10.5, -5.4], [-9.2, -5.6], [-7.8, -5.3], [-10.2, -2.2], [-8.4, -2.0]]) b.ball(x, 1.1, z, 0.5, C.leaf, { sy: 1.2, seg: 7 });
-  W.link('outside', b.p(-6.05, 0, -3.7), [1, 0], 'greenhouse', W.roomDoor.greenhouse, [1, 0], 'creak');
+  W.link('outside', b.p(-6.05, 0, -3.7), [1, 0], 'greenhouse', W.roomDoor.greenhouse, W.roomOut.greenhouse, 'creak');
   // scarecrow
   b.block(6.42, 6.58, 0, 1.7, 1.92, 2.08, C.woodD, { climb: false }); b.box(5.7, 7.3, 1.25, 1.35, 1.95, 2.05, C.woodD);
   b.box(6.05, 6.95, 0.75, 1.4, 1.9, 2.1, C.blue, { layer: 'sway' }); b.ball(6.5, 1.95, 2, 0.27, C.hay, { seg: 8 }); b.cone(6.5, 2.1, 2.55, 2, 0.4, C.woodD, { seg: 8 }); b.cyl(6.5, 2.1, 2.14, 2, 0.5, 0.5, C.woodD, { seg: 10 });
@@ -564,7 +564,7 @@ function wildGarden(W, b, rand, out) {
   b.box(-11.9, -7.2, 2.3, 2.5, -7.55, -5.2, C.slate, { rot: [0.35, 0, 0] }); b.box(-11.9, -7.2, 2.3, 2.5, -9.9, -7.55, C.slateD, { rot: [-0.35, 0, 0] });
   b.box(-7.5, -7.46, 0, 1.9, -8.0, -6.9, '#3d2c22'); b.box(-7.42, -6.7, 0, 1.9, -6.93, -6.87, C.woodL, { rot: [0, -0.5, 0] });
   b.box(-10.6, -9.4, 1.0, 1.7, -5.42, -5.36, '#ffffff', { layer: 'glow' });
-  W.link('outside', b.p(-7.05, 0, -7.45), [1, 0], 'shed', W.roomDoor.shed, [1, 0], 'creak');
+  W.link('outside', b.p(-7.05, 0, -7.45), [1, 0], 'shed', W.roomDoor.shed, W.roomOut.shed, 'creak');
   W.addBowl('milk', 'outside', b.p(-6.2, 0, -5.9));
   // upturned boat
   b.solid(4.5, 6.5, 0, 0.85, 4.0, 8.0);
@@ -575,7 +575,7 @@ function wildGarden(W, b, rand, out) {
   b.lying(-2, 0.6, 5, 3.2, 0.62, C.bark, 'x', { seg: 10 });
   b.lying(-0.39, 0.6, 5, 0.04, 0.6, C.woodL, 'x', { seg: 10 }); b.lying(-0.36, 0.6, 5, 0.03, 0.44, '#2e211b', 'x', { seg: 10 });
   b.ball(-2.4, 1.18, 5.1, 0.5, C.moss, { sy: 0.3, sx: 1.6, seg: 7 }); for (const x of [-3.0, -1.4]) b.cyl(x, 1.2, 1.4, 4.9, 0.1, 0.05, C.red, { seg: 6 });
-  W.link('outside', b.p(-0.05, 0, 5), [1, 0], 'burrow', W.roomDoor.burrow, [1, 0], 'rustle');
+  W.link('outside', b.p(-0.05, 0, 5), [1, 0], 'burrow', W.roomDoor.burrow, W.roomOut.burrow, 'rustle');
   // bird bath
   b.block(1.8, 2.2, 0, 0.8, -4.2, -3.8, C.stoneD, { climb: false }); b.cyl(2, 0.8, 0.95, -4, 0.6, 0.3, C.stone, { seg: 10 }); b.disc(2, 0.96, -4, 0.5, C.water, { layer: 'water', seg: 10 });
   // brambles, mushrooms, tyre, leaf pile, willow

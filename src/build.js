@@ -249,7 +249,7 @@ export class Builder {
     this.ox = ox;
     this.oz = oz;
     this.oy = oy;
-    this.layers = { solid: [], ground: [], sway: [], grass: [], glow: [], lit: [], water: [] };
+    this.layers = { solid: [], ground: [], sway: [], grass: [], glow: [], lit: [], water: [] , fine: [] };
     this.tex = 0; // surface kind for whatever is built next, unless a piece says otherwise
   }
 
@@ -377,7 +377,7 @@ export class Builder {
     const g = cached('cyl' + seg, () => new THREE.CylinderGeometry(1, 1, 1, seg));
     const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), to.clone().sub(from).normalize());
     const mid = from.clone().lerp(to, 0.5).add(new THREE.Vector3(this.ox, this.oy, this.oz));
-    this.geo(g, color, new THREE.Matrix4().compose(mid, q, new THREE.Vector3(r, len, r)), { layer, tex });
+    this.geo(g, color, new THREE.Matrix4().compose(mid, q, new THREE.Vector3(r, len, r)), { layer: layer || (r <= 0.03 ? 'fine' : undefined), tex });
   }
 
   // a moving or special object: positioned in local coordinates, added as its own mesh
@@ -391,13 +391,16 @@ export class Builder {
   p(x, y, z) { return new THREE.Vector3(x + this.ox, y + this.oy, z + this.oz); }
 
   finish() {
-    const mats = { solid: solidMat, ground: groundMat, sway: swayMat, grass: swayMat, glow: glowMat, lit: litMat, water: waterMat };
+    const mats = { solid: solidMat, ground: groundMat, sway: swayMat, grass: swayMat, glow: glowMat, lit: litMat, water: waterMat, fine: solidMat };
     for (const [name, list] of Object.entries(this.layers)) {
       if (!list.length) continue;
       const merged = mergeGeometries(list, false);
       for (const g of list) g.dispose();
       const mesh = new THREE.Mesh(merged, mats[name]);
-      mesh.castShadow = name === 'solid' || name === 'sway';
+      mesh.castShadow = name === 'solid' || name === 'sway' || name === 'fine';
+      // Grass and thin things (wires, ropes, stems) are drawn after the cats' see-through silhouettes,
+      // so a blade of grass or a washing line in front of a cat doesn't count as hiding her.
+      if (name === 'grass' || name === 'fine') mesh.renderOrder = 2.5;
       if (name === 'ground') mesh.receiveShadow = true;
       mesh.receiveShadow = name !== 'glow' && name !== 'lit';
       if (name === 'water') { mesh.castShadow = false; mesh.renderOrder = 1; }

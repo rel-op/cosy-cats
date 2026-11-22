@@ -314,16 +314,27 @@ export function buildCritters(W, out, rand) {
   motes.renderOrder = 4;
   W.scene.add(motes);
   W.updaters.push((dt, t, cats, night) => {
-    const c = cats[0].pos, inside = W.regions[W.region].indoor;
-    mmat.opacity = inside ? 0.35 * (1 - night) : 0.55 * (1 - night * 0.8);
-    const sx = inside ? 0.35 : 1, sy = inside ? 0.6 : 1;
-    for (let i = 0; i < NM; i++) {
-      const [x, y, z, p] = mbase[i];
-      const wx = ((x + t * 0.25 + Math.sin(t * 0.3 + p) * 0.6) % 30 + 30) % 30 - 15;
-      const wz = ((z + t * 0.1) % 20 + 20) % 20 - 10;
-      mpos[i * 3] = c.x + wx * sx;
-      mpos[i * 3 + 1] = 0.3 + ((y + t * 0.07 + Math.sin(t * 0.5 + p * 3) * 0.2) % 4.5) * sy;
-      mpos[i * 3 + 2] = c.z + wz * sx;
+    const r = W.regions[W.region], c = cats[0].pos, wrap = (v, n) => ((v % n) + n) % n;
+    if (r.indoor) {
+      // indoors: a little dust hanging in the room itself, staying put as the cats move about
+      const [ox, oz] = r.origin, { w, d, h } = r.size;
+      mmat.opacity = 0.3 * (1 - night);
+      for (let i = 0; i < NM; i++) {
+        const [x, y, z, p] = mbase[i];
+        if (i % 4 || h < 2) { mpos[i * 3 + 1] = -50; continue; }
+        mpos[i * 3] = ox + 0.3 + wrap(x * 3.1 + t * 0.05 + Math.sin(t * 0.3 + p) * 0.2, w - 0.6);
+        mpos[i * 3 + 1] = 0.3 + wrap(y + t * 0.04, Math.min(h, 2.6) - 0.4);
+        mpos[i * 3 + 2] = oz + 0.3 + wrap(z * 2.3 + t * 0.03, d - 0.6);
+      }
+    } else {
+      // outdoors: each speck has its own place in the garden; only the patch of them that is kept moves with her
+      mmat.opacity = 0.55 * (1 - night * 0.8);
+      for (let i = 0; i < NM; i++) {
+        const [x, y, z, p] = mbase[i];
+        mpos[i * 3] = c.x + wrap(x + t * 0.25 + Math.sin(t * 0.3 + p) * 0.6 - c.x + 15, 30) - 15;
+        mpos[i * 3 + 1] = 0.3 + wrap(y + t * 0.07 + Math.sin(t * 0.5 + p * 3) * 0.2, 4.5);
+        mpos[i * 3 + 2] = c.z + wrap(z + t * 0.1 - c.z + 10, 20) - 10;
+      }
     }
     mgeo.attributes.position.needsUpdate = true;
   });

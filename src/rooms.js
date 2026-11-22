@@ -32,11 +32,38 @@ export function buildRooms(W, scene) {
     b.group = group;
     return b;
   }
-  const doorL = (b, z0, z1, hgt, color = '#2a1f1a') => {
-    b.box(0, 0.03, 0, hgt, z0, z1, color);
-    b.box(0, 0.05, hgt, hgt + 0.1, z0 - 0.1, z1 + 0.1, C.woodD);
-    b.box(0.05, 0.9, 0, 0.012, z0 + 0.05, z1 - 0.05, '#b8a37a');
-    W.roomDoor[b.id] = b.p(0.42, 0, (z0 + z1) / 2);
+  // The way out of a room stands at its open edge, on the side you came in from: go through a door in the wall
+  // on your left and you arrive at the right-hand edge of the next room, still heading the same way.
+  W.roomOut = {};
+  const exitRight = (b, w, zc, color, { h = 2.35, frame = C.white, leaf = true, mat = '#a8744f', register = true } = {}) => {
+    for (const dz of [-0.78, 0.68]) b.box(w - 0.1, w, 0, h, zc + dz, zc + dz + 0.1, frame);
+    b.box(w - 0.1, w, h, h + 0.12, zc - 0.78, zc + 0.78, frame);
+    if (leaf) {
+      // the door itself, pushed right open against the far side
+      b.box(w - 1.3, w - 0.1, 0, h - 0.05, zc - 0.74, zc - 0.68, color);
+      for (const [y0, y1] of [[0.12 * h, 0.42 * h], [0.48 * h, 0.9 * h]]) b.box(w - 1.15, w - 0.25, y0, y1, zc - 0.68, zc - 0.665, tint(color, -0.07));
+      b.ball(w - 1.18, 0.46 * h, zc - 0.64, 0.05, C.yellow, { seg: 5 });
+      b.solid(w - 1.3, w - 0.1, 0, h - 0.05, zc - 0.74, zc - 0.68, { climb: false });
+    }
+    b.box(w - 1.0, w - 0.06, 0, 0.02, zc - 0.6, zc + 0.6, mat, { r: 0.01 }); b.box(w - 0.9, w - 0.16, 0.02, 0.026, zc - 0.48, zc + 0.48, tint(mat, 0.1));
+    const spot = b.p(w - 0.42, 0, zc);
+    if (register) { W.roomDoor[b.id] = spot; W.roomOut[b.id] = [-1, 0]; }
+    return spot;
+  };
+  const exitNear = (b, xc, d, color, { h = 2.35, frame = C.white, leaf = true, mat = '#a8744f', register = true, flap = false } = {}) => {
+    for (const dx of [-0.78, 0.68]) b.box(xc + dx, xc + dx + 0.1, 0, h, d - 0.1, d, frame);
+    b.box(xc - 0.78, xc + 0.78, h, h + 0.12, d - 0.1, d, frame);
+    if (leaf) {
+      b.box(xc - 0.74, xc - 0.68, 0, h - 0.05, d - 1.3, d - 0.1, color);
+      for (const [y0, y1] of [[flap ? 0.3 * h : 0.12 * h, 0.42 * h], [0.48 * h, 0.9 * h]]) b.box(xc - 0.68, xc - 0.665, y0, y1, d - 1.15, d - 0.25, tint(color, -0.07));
+      if (flap) b.box(xc - 0.68, xc - 0.66, 0.08, 0.6, d - 0.98, d - 0.42, tint(color, -0.3));
+      b.ball(xc - 0.64, 0.46 * h, d - 1.18, 0.05, C.yellow, { seg: 5 });
+      b.solid(xc - 0.74, xc - 0.68, 0, h - 0.05, d - 1.3, d - 0.1, { climb: false });
+    }
+    b.box(xc - 0.6, xc + 0.6, 0, 0.02, d - 1.0, d - 0.06, mat, { r: 0.01 }); b.box(xc - 0.48, xc + 0.48, 0.02, 0.026, d - 0.9, d - 0.16, tint(mat, 0.1));
+    const spot = b.p(xc, 0, d - 0.42);
+    if (register) { W.roomDoor[b.id] = spot; W.roomOut[b.id] = [0, -1]; }
+    return spot;
   };
   const win = (b, side, a0, a1, y0, y1, frame = C.white) => {
     const pane = new THREE.Mesh(new THREE.BoxGeometry(side === 'L' ? 0.04 : a1 - a0 - 0.2, y1 - y0 - 0.2, side === 'L' ? a1 - a0 - 0.2 : 0.04), W.skyMat);
@@ -61,15 +88,15 @@ export function buildRooms(W, scene) {
     }
   };
 
-  W.kit = { room, doorL, win, sunbeam, lamp, planksFloor, planksWall }; // the houses are built from the same pieces, later
+  W.kit = { room, exitRight, exitNear, win, sunbeam, lamp, planksFloor, planksWall }; // the houses are built from the same pieces, later
 
   // ---------- home: the sitting room, off the hallway behind the cat flap ----------
   {
     const b = room('home', { w: 9, d: 7, h: 3.2, floor: '#b98c5e', wall: '#e9dcc3', wall2: '#b9c9a8', light: { hemi: ['#ffe9c8', '#8a6a52', 0.95, 0.5], sun: ['#fff1da', 1.5, 0.3], bg: ['#2b2233', '#1b1622'] } });
     planksFloor(b, 9, 7, '#b98c5e', '#c2966a');
     b.box(0, 9, 0, 0.25, 0, 0.04, C.white); b.box(0, 0.04, 0, 0.25, 0, 7, C.white);
-    doorL(b, 2.3, 3.5, 2.5, '#5d8f8c');
-    b.box(0.03, 0.06, 0.08, 0.6, 2.6, 3.2, '#2a1f1a');
+    exitRight(b, 9, 2.8, '#c9695a');
+    for (const [z, y, c] of [[2.45, 1.85, '#e8c170'], [3.05, 2.05, '#7fa3c7']]) { b.box(0, 0.04, y, y + 0.55, z, z + 0.48, C.woodD); b.box(0.03, 0.05, y + 0.07, y + 0.48, z + 0.07, z + 0.41, c); }
     win(b, 'R', 5.4, 7.4, 1.2, 2.7);
     sunbeam(b, 6.0, 2.2, 1.8, 2.4, 0.5);
     // fireplace
@@ -126,8 +153,7 @@ export function buildRooms(W, scene) {
     const b = room('box', { w: 3.2, d: 2.6, h: 1.5, floor: C.cardD, wall: C.card, cap: '#8a6c44', light: { hemi: ['#ffe2b0', '#7a5a3a', 0.95, 0.62], sun: ['#fff0d0', 1.3, 0.45], bg: ['#3a2a1e', '#22180f'] } });
     for (let x = 0.2; x < 3.2; x += 0.24) b.box(x, x + 0.03, 0, 1.5, 0, 0.02, tint(C.card, -0.05));
     for (let z = 0.2; z < 2.6; z += 0.24) b.box(0, 0.02, 0, 1.5, z, z + 0.03, tint(C.card, -0.05));
-    b.box(1.2, 2.0, 0, 0.62, 0, 0.03, '#ffe9b8', { layer: 'lit' });
-    W.roomDoor.box = b.p(1.6, 0, 0.42);
+    exitNear(b, 1.6, 2.6, C.cardD, { h: 0.66, frame: '#8a6c44', leaf: false, mat: '#ffe9b8' });
     b.box(0.5, 2.9, 0, 0.05, 0.9, 2.4, '#b9a2ee', { r: 0.02 }); b.box(0.6, 2.8, 0.05, 0.07, 1.0, 1.25, C.white); b.box(0.6, 2.8, 0.05, 0.07, 2.05, 2.3, C.white);
     for (const [x, y] of [[0.5, 1.0], [2.6, 0.8], [1.9, 1.2]]) b.box(x, x + 0.08, y, y + 0.08, 0, 0.03, '#fff3c8', { layer: 'lit' });
     b.box(0, 0.03, 0.9, 1.0, 1.4, 1.5, '#fff3c8', { layer: 'lit' });
@@ -145,7 +171,7 @@ export function buildRooms(W, scene) {
     const b = room('shed', { w: 6, d: 5, h: 2.8, floor: '#7a5a44', wall: C.wood, light: { hemi: ['#ffdcb0', '#5a4636', 0.8, 0.36], sun: ['#ffe9c8', 1.3, 0.25], bg: ['#2a2018', '#17110c'] } });
     planksFloor(b, 6, 5, '#7a5a44', '#84634b', 0.5);
     planksWall(b, 'L', 5, 2.8, C.wood, C.plank); planksWall(b, 'R', 6, 2.8, C.plank, C.wood);
-    doorL(b, 3.0, 4.2, 2.2);
+    exitRight(b, 6, 2.0, C.wood, { h: 2.2, frame: C.woodD });
     win(b, 'R', 0.7, 1.9, 1.3, 2.2, C.woodD);
     sunbeam(b, 1.3, 1.6, 1.1, 1.8, 0.4);
     b.block(2.5, 5.7, 0, 1.0, 0, 0.9, C.woodD); b.box(2.4, 5.8, 1.0, 1.08, 0, 1.0, C.woodL); b.solid(2.4, 5.8, 1.0, 1.08, 0, 1.0);
@@ -167,7 +193,7 @@ export function buildRooms(W, scene) {
     b.box(1.5, 3.9, 0, 0.014, 2.6, 4.3, '#8a5a5a'); b.box(1.7, 3.7, 0.014, 0.018, 2.8, 4.1, '#a87a6a');
     b.block(0.3, 1.0, 0, 0.45, 4.2, 4.8, C.woodD); b.block(0.4, 0.9, 0.45, 0.8, 4.3, 4.7, C.wood);
     for (let k = 0; k < 3; k++) b.cyl(2.0 + k * 0.05, k * 0.2, k * 0.2 + 0.24, 0.5, 0.19 - k * 0.025, 0.15 - k * 0.025, C.terracotta, { seg: 7 });
-    b.cyl(5.5, 0, 0.36, 2.2, 0.2, 0.17, C.metal, { seg: 8 }); b.box(0.02, 0.05, 1.0, 1.9, 2.0, 2.6, '#f2e6cc'); b.box(0.04, 0.06, 1.1, 1.8, 2.1, 2.5, '#7fa35a');
+    b.cyl(1.3, 0, 0.36, 3.3, 0.2, 0.17, C.metal, { seg: 8 }); b.box(0.02, 0.05, 1.0, 1.9, 2.0, 2.6, '#f2e6cc'); b.box(0.04, 0.06, 1.1, 1.8, 2.1, 2.5, '#7fa35a');
     for (const [x, z] of [[5.6, 4.6], [0.25, 0.25]]) { b.beam([x, 2.8, z], [x - 0.5, 2.3, z - 0.02], 0.006, '#e9e6dc', { seg: 3 }); b.beam([x, 2.8, z], [x - 0.02, 2.3, z - 0.5 * (z > 1 ? 1 : -1)], 0.006, '#e9e6dc', { seg: 3 }); }
     W.addItem('pinecone', 'shed', b.p(2.2, 0, 2.2));
     W.addItem('cloth', 'shed', b.p(3.6, 0, 4.2));
@@ -178,6 +204,7 @@ export function buildRooms(W, scene) {
   {
     const b = room('greenhouse', { w: 7.5, d: 4.5, h: 0.7, floor: '#b9b3a4', wall: C.brickD, cap: C.white, light: { hemi: ['#f4ffe6', '#8a9a72', 1.25, 0.5], sun: ['#fff8e0', 1.9, 0.35], bg: ['#2a3a34', '#18231f'] } });
     for (let x = 0; x < 7.5; x += 0.75) for (let z = 0; z < 4.5; z += 0.75) if ((Math.round(x / 0.75) + Math.round(z / 0.75)) % 2) b.box(x + 0.02, x + 0.73, 0, 0.012, z + 0.02, z + 0.73, '#c9c3b4');
+    W.regions.greenhouse.size.h = 2.8; // so the glass is in the picture, not just the low brick wall
     // glass walls above the brick
     const glassL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 2.0, 4.5), W.skyMat); b.dyn(glassL, -0.02, 1.74, 2.25);
     const glassR = new THREE.Mesh(new THREE.BoxGeometry(7.5, 2.0, 0.04), W.skyMat); b.dyn(glassR, 3.75, 1.74, -0.02);
@@ -185,8 +212,7 @@ export function buildRooms(W, scene) {
     for (let z = 0; z <= 4.5; z += 1.125) b.box(-0.05, 0.03, 0.7, 2.75, z - 0.04, z + 0.04, C.white);
     b.box(0, 7.5, 2.7, 2.78, -0.06, 0.03, C.white); b.box(-0.06, 0.03, 2.7, 2.78, 0, 4.5, C.white); b.box(0, 7.5, 1.7, 1.75, -0.05, 0.03, C.white); b.box(-0.05, 0.03, 1.7, 1.75, 0, 4.5, C.white);
     b.solid(-0.35, 0, 0.7, 2.8, -0.35, 4.5, { climb: false }); b.solid(0, 7.5, 0.7, 2.8, -0.35, 0, { climb: false });
-    doorL(b, 0.5, 1.5, 0.68, '#3d4f48');
-    b.box(0, 0.03, 0.7, 2.2, 0.5, 1.5, '#3d4f48');
+    exitRight(b, 7.5, 1.85, '#cfe9ef', { h: 2.1, frame: C.white });
     sunbeam(b, 4.2, 2.6, 4.4, 2.2, 0.3);
     b.block(1.9, 7.2, 0, 0.8, 0.05, 0.95, C.woodD); b.box(1.8, 7.3, 0.8, 0.86, 0, 1.0, C.woodL); b.solid(1.8, 7.3, 0.8, 0.86, 0, 1.0);
     for (let k = 0; k < 4; k++) { const x = 2.3 + k * 0.85; b.cyl(x, 0.86, 1.1, 0.5, 0.17, 0.13, C.terracotta, { seg: 7 }); b.box(x - 0.015, x + 0.015, 1.1, 2.0, 0.48, 0.52, C.leafD); for (let j = 0; j < 3; j++) { b.ball(x + (j - 1) * 0.16, 1.35 + j * 0.25, 0.5, 0.2, C.leaf, { layer: 'sway', sway: 0.2, seg: 6 }); b.ball(x + (j - 1) * 0.2, 1.3 + j * 0.24, 0.66, 0.07, j % 2 ? C.red : C.orange, { seg: 5 }); } }
@@ -200,7 +226,7 @@ export function buildRooms(W, scene) {
     for (let k = 0; k < 9; k++) b.ball(0.08, 0.9 + (k % 4) * 0.45, 0.4 + k * 0.48, 0.16, k % 2 ? C.leaf : C.leafD, { sx: 0.5, seg: 5, layer: 'sway', sway: 0.3 });
     for (const [x, z, c] of [[5.3, 3.9, '#d9c9a3'], [5.6, 3.5, '#cdbb93']]) b.ball(x, 0.2, z, 0.4, c, { sy: 0.5, seg: 7 });
     b.cyl(4.6, 0, 0.38, 1.6, 0.22, 0.19, '#6d9a8a', { seg: 8 }); b.beam([4.78, 0.3, 1.6], [5.15, 0.48, 1.6], 0.04, '#6d9a8a');
-    for (const [x, z] of [[3.5, 1.7], [6.9, 2.3]]) { b.cyl(x, 0, 0.5, z, 0.3, 0.25, C.terracotta, { seg: 8 }); for (let k = 0; k < 5; k++) b.ball(x + Math.cos(k * 1.3) * 0.22, 0.75 + (k % 3) * 0.3, z + Math.sin(k * 1.3) * 0.22, 0.24, k % 2 ? '#5d9a48' : '#7fb558', { seg: 6, layer: 'sway', sway: 0.3 }); b.ball(x, 1.5, z, 0.12, C.yellow, { seg: 6 }); b.solid(x - 0.26, x + 0.26, 0, 0.5, z - 0.26, z + 0.26, { climb: false }); }
+    for (const [x, z] of [[3.5, 1.7], [6.0, 2.9]]) { b.cyl(x, 0, 0.5, z, 0.3, 0.25, C.terracotta, { seg: 8 }); for (let k = 0; k < 5; k++) b.ball(x + Math.cos(k * 1.3) * 0.22, 0.75 + (k % 3) * 0.3, z + Math.sin(k * 1.3) * 0.22, 0.24, k % 2 ? '#5d9a48' : '#7fb558', { seg: 6, layer: 'sway', sway: 0.3 }); b.ball(x, 1.5, z, 0.12, C.yellow, { seg: 6 }); b.solid(x - 0.26, x + 0.26, 0, 0.5, z - 0.26, z + 0.26, { climb: false }); }
     W.addItem('flower', 'greenhouse', b.p(4.8, 0, 2.2));
     W.addBowl('water', 'greenhouse', b.p(1.4, 0, 3.9));
     b.finish();
@@ -211,7 +237,7 @@ export function buildRooms(W, scene) {
     const b = room('treehouse', { w: 5, d: 4.6, h: 2.6, floor: C.plank, wall: C.woodL, light: { hemi: ['#ffe6c0', '#7a5a44', 0.95, 0.42], sun: ['#fff0d8', 1.4, 0.25], bg: ['#27352a', '#151d17'] } });
     planksFloor(b, 5, 4.6, C.plank, C.woodL, 0.46);
     planksWall(b, 'L', 4.6, 2.6, C.woodL, '#dab183'); planksWall(b, 'R', 5, 2.6, '#dab183', C.woodL);
-    doorL(b, 2.9, 3.9, 1.5);
+    exitRight(b, 5, 2.8, C.woodL, { h: 1.5, frame: C.woodD });
     win(b, 'R', 0.9, 2.1, 1.0, 2.0, C.woodD);
     sunbeam(b, 1.5, 1.5, 1.1, 1.6, 0.35);
     b.disc(2.6, 0.02, 2.6, 1, '#7fa3c7', { sx: 1.6, sz: 1.2, seg: 16 }); b.disc(2.6, 0.025, 2.6, 1, '#e8d2a8', { sx: 1.1, sz: 0.75, seg: 16 });
@@ -250,7 +276,7 @@ export function buildRooms(W, scene) {
     for (const y of [0.5, 1.2, 1.9, 2.6]) { b.box(0, 6.5, y, y + 0.05, 0, 0.035, C.barkD); b.box(0, 0.035, y, y + 0.05, 0, 5, C.barkD); }
     for (let z = 0; z <= 5; z += 0.625) b.box(0, 0.03, 0.5, 2.7, z - 0.02, z + 0.02, C.barkD);
     b.box(0, 6.5, 0, 0.5, 0, 0.03, C.woodD); b.box(0, 0.03, 0, 0.5, 0, 5, C.woodD);
-    doorL(b, 1.7, 2.9, 2.0);
+    exitRight(b, 6.5, 4.2, '#efe6d0', { h: 2.0, frame: C.barkD });
     b.block(2.6, 4.2, 0, 0.34, 1.8, 2.9, C.barkD); b.box(2.5, 4.3, 0.34, 0.4, 1.7, 3.0, C.bark); b.solid(2.5, 4.3, 0.34, 0.4, 1.7, 3.0);
     b.ball(3.2, 0.55, 2.3, 0.16, '#5a7a8a', { seg: 8 }); b.beam([3.32, 0.56, 2.3], [3.52, 0.64, 2.3], 0.025, '#5a7a8a'); b.cyl(3.8, 0.4, 0.5, 2.1, 0.06, 0.05, C.white, { seg: 6 }); b.cyl(3.9, 0.4, 0.5, 2.6, 0.06, 0.05, C.white, { seg: 6 });
     for (const [x, z, c] of [[4.9, 3.5, '#8a5a8a'], [5.5, 2.6, '#b8452f'], [2.0, 3.6, '#8a5a8a']]) b.box(x - 0.42, x + 0.42, 0, 0.09, z - 0.42, z + 0.42, c, { r: 0.04 });
@@ -274,8 +300,7 @@ export function buildRooms(W, scene) {
     const b = room('burrow', { w: 4.4, d: 3, h: 1.6, floor: '#5e4334', wall: '#6e4e3a', cap: '#3a2a20', light: { hemi: ['#e2d2a8', '#5a4632', 0.85, 0.5], sun: ['#ffe2b0', 1.0, 0.3], bg: ['#1c1712', '#0f0c09'] } });
     for (let x = 0.3; x < 4.4; x += 0.55) b.box(x, x + 0.06, 0, 1.6, 0, 0.03, '#5a3f2f');
     for (let z = 0.3; z < 3; z += 0.55) b.box(0, 0.03, 0, 1.6, z, z + 0.06, '#5a3f2f');
-    b.box(0, 0.03, 0, 1.0, 1.0, 2.0, '#cfe3b0', { layer: 'lit' });
-    W.roomDoor.burrow = b.p(0.42, 0, 1.5);
+    exitRight(b, 4.4, 2.2, '#5a3f2f', { h: 0.8, frame: '#4a3426', leaf: false, mat: '#cfe3b0' });
     for (const [x, z, r] of [[2.9, 1.3, 0.7], [3.5, 1.7, 0.55], [2.5, 1.9, 0.5], [3.3, 0.9, 0.45]]) b.ball(x, 0, z, r, [C.moss, '#6f9a45', '#527d35'][Math.round(x * 2) % 3], { sy: 0.28, seg: 8 });
     W.addBed('mossbed', 'burrow', b.p(3.0, 0.08, 1.45), 1.0);
     for (const [x, z, hgt] of [[0.7, 0.4, 0.3], [1.1, 0.3, 0.2], [4.0, 0.4, 0.34], [3.7, 2.6, 0.22], [1.6, 2.7, 0.26]]) { b.cyl(x, 0, hgt, z, 0.035, 0.045, '#e9f4e0', { seg: 5, layer: 'lit' }); b.ball(x, hgt, z, 0.12, '#8ff0d0', { sy: 0.6, seg: 6, layer: 'lit' }); }

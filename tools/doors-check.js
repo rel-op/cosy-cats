@@ -1,5 +1,5 @@
 // Walks through every doorway in both directions: node tools/play.mjs tools/doors-check.js
-// A low step by a door (the patio, a doorstep, the treehouse platform) is reported as "blocked" and is fine.
+// A low step by a door (the patio, a doorstep) is reported as "blocked" and is fine.
 const D = 'a', W = game.world, m = game.mama;
 game.input.virtual(D, { jump: true }); T.run(2); game.input.virtual(D, {}); T.run(10);
 let ok = 0; const bad = [];

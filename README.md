@@ -83,7 +83,9 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 
 ## The houses
 
-Each house has a cat flap in its garden door. Behind it is a hallway, with doors to three or four rooms, the shut front door at the far end, and (in four of them) stairs up to a landing with a cushion. Walk into a doorway to go through; the way back to the hallway is the door in each room's left wall.
+Each house has a cat flap in its garden door. Behind it is a hallway, with doors to three or four rooms, the shut front door at the far end, and (in four of them) stairs up to a landing with a cushion and a window. Each hallway door stands ajar, is a different colour, and has a little shelf above it with something that shows what is behind it (a kettle for the kitchen, a duck for the bathroom, books for the library).
+
+Doors keep your direction: go through a door in the wall on your left and you arrive at the right-hand edge of the next room, still heading the same way. So the way back is always the door standing at the open edge of the room, on the side you came in from, in the same colour as the hallway door. The dens in the gardens work the same way.
 
 - **Home (the cottage):** the sitting room with the fire, cat tree and food; a kitchen with a table to get up on and a bowl of milk; a bedroom with the big bed and a window seat; a bathroom with a bath to jump into and a rubber duck.
 - **Next door, left (the family house):** a playroom with a tent, a toy train, balls and a teddy; a room with bunk beds (the ladder goes to the top bunk) and a rocket; a laundry room with a warm dryer and a basket of washing.

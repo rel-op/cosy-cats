@@ -24,6 +24,7 @@ export function buildToys(W, out) {
     const m = new THREE.Mesh(geo, typeof color === 'string' ? toon(color) : color);
     m.position.set(x, y, z);
     m.castShadow = true;
+    m.renderOrder = 2.5; // after the cats' see-through silhouettes: a rope or a plank is not something to be hidden behind
     parent.add(m);
     return m;
   };
