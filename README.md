@@ -30,7 +30,7 @@ Then open the address it prints (usually http://localhost:5173). It works with g
 |---|---|---|
 | Walk and climb | Stick | Arrows / WASD |
 | Jump | A | Space |
-| Pick up, eat, hop on, curl up | X or B | E |
+| Pick up, eat, hop on, bat things, curl up | X or B | E |
 | Meow (the others answer and come over) | Y | Q |
 | Swap cats | LB / RB | Tab |
 | Choose cats | Start | Enter |
@@ -42,6 +42,7 @@ Then open the address it prints (usually http://localhost:5173). It works with g
 | The ground | Walk there, finding the way round fences |
 | Something high (a tree fork, a roof, a shelf) | Walk to it and climb up |
 | A toy, a bowl, a doorway, a bed | Go and pick it up, eat, go in, or settle down |
+| A swing, the garden tap, the chimes | Go and hop on, turn it, or ring them |
 | Your own cat | Hop (or settle down, if she is standing in a bed) |
 | Another cat | Meow to call it; a kitten next to mama hops on her back |
 | Twice quickly | Hop on the way |
@@ -50,13 +51,25 @@ Then open the address it prints (usually http://localhost:5173). It works with g
 Two corner icons: the moon curls up for a nap anywhere, the paw opens the cat chooser (which also lets you switch which cat you are). Touch and mouse steer the same cat as the keyboard, so one person can mix them; a gamepad can still join as the second player.
 
 - The first device to press something plays mama. A second gamepad (or the keyboard) can join at any time and takes a kitten.
-- Walk into something and keep pushing to climb it. Mama climbs anything; kittens manage low things and ride on her back for the rest.
+- Walk into something and keep pushing to climb it. Every cat climbs anything climbable. A kitten can still hop on mama's back for the ride, and kittens nobody is steering do that by themselves when she goes up something tall.
 - Walking into a small space (the cat flap, the cardboard box, a shed door, the hollow log) takes the whole family inside.
 - Curl up together anywhere and everyone sleeps until morning.
 - The game remembers: it reopens where the family last slept, with every toy and treasure where it was left (in a bed, on the ground, wherever) and you as the same cat. Things tucked into a bed can be taken out again by walking up to them nose-first, or by tapping them. The save lives in the browser, so each device and browser has its own.
 - The "choose cats" panel changes coats, adds or removes kittens (up to four) and turns the sound words and music on or off. Nothing resets.
 - Now and then there is a gentle shower; indoors you hear it on the roof.
 - `T` skips ahead towards night, `P` starts or stops a shower.
+
+## Things to play with
+
+Nothing here is needed for anything; each just answers when a cat touches it.
+
+- **See-saw** (next door, left): stand on one end and one of the others comes and sits on the far end. Jump, and when you land they fly up. A heavy cat sends a light one much higher than the other way round.
+- **Swings:** the swing set next door on the left, and an old tyre on a rope in the overgrown garden. The action button beside one hops on; push the stick to go higher; jump to leap off. Walking into a swing gives it a push, with or without someone on it.
+- **Garden tap** (vegetable garden, on the greenhouse wall): bat it and the sprinkler comes on, with a rainbow in the spray by day, and flowers come up where the water falls. Bat it again to turn it off, or it stops by itself.
+- **The loose stepping stone** (koi garden, by the stone lantern): stand on it and water runs into the bamboo tipper, which fills, tips and knocks back with a clack, and the lantern lights.
+- **Wind chimes** (tea house veranda): walk through them or bat them. Five notes that sound well in any order.
+- **Pots on the front wall** (home): walk along the wall into them, or bat them from below, and they tumble onto the lane. They don't break, and can be carried back.
+- **Doves:** a flock that feeds on the lawns. Run at them and they all go up and come down somewhere else, sometimes close by and sometimes gardens away. Creep, and you get closer. After a few goes they sit somewhere high for a while.
 
 ## The place
 
@@ -73,6 +86,7 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 - `src/main.js` game loop, players, the "do" button, followers, doorways, sleeping, camera
 - `src/cat.js` the procedural cat, its coats, animation and movement
 - `src/world.js`, `src/rooms.js`, `src/props.js`, `src/critters.js` gardens, interiors, scenery pieces, wildlife
+- `src/toys.js` the things that do something: see-saw, swings, tap and sprinkler, stepping stone and water tipper, chimes, pots
 - `src/pixel.js` the pixel-art renderer (low-resolution render, outlines, glow, palette, iris wipes)
 - `src/build.js` shared materials and the builder that bakes scenery into a few meshes
 - `src/pointer.js`, `src/nav.js` touch and mouse taps, and route-finding for tap-to-go
@@ -83,6 +97,7 @@ Five back gardens in a row, each different, joined by gaps in their fences and b
 
 - `node tools/gen-audio.mjs` generates the sound effects, ambience and music with ElevenLabs (needs `ELEVENLABS_API_KEY` in `.env.local`).
 - `node tools/play.mjs <script.js>` drives the game in headless Chrome for tests and screenshots.
+- `node tools/toys-check.mjs` checks the garden toys, the doves, kittens climbing, and that an older saved game still loads.
 - `node tools/save-check.mjs` checks that carried things and the chosen cat survive closing the game.
 - `node tools/app-check.mjs` checks offline play, the install row and switching to a new version, against a built copy (`npm run build`, `npm run preview`).
 - `node tools/make-icons.mjs` photographs the app icons from the game (dev server running).

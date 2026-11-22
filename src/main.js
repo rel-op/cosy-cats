@@ -160,9 +160,9 @@ function nearestItem(cat) {
   // something already tucked into a bed is only picked up nose-first, so settling down beside it doesn't grab it
   const nx = cat.pos.x + Math.sin(cat.yaw) * (cat.radius + 0.12), nz = cat.pos.z + Math.cos(cat.yaw) * (cat.radius + 0.12);
   for (const it of world.items) {
-    if (it.heldBy || it.region !== world.region) continue;
+    if (it.heldBy || it.fly || it.region !== world.region) continue;
     const p = it.mesh.position;
-    if (Math.abs(p.y - cat.pos.y) > 0.6) continue;
+    if (p.y - cat.pos.y > (it.name === 'pot' ? 0.85 : 0.6) || cat.pos.y - p.y > 0.6) continue; // a pot on a wall can be reached from below
     const d = Math.hypot(p.x - cat.pos.x, p.z - cat.pos.z);
     if (it.bed ? Math.hypot(p.x - nx, p.z - nz) < 0.3 && d < bd : d < bd) { best = it; bd = d; }
   }
@@ -170,6 +170,7 @@ function nearestItem(cat) {
 }
 function pickUp(cat, it) {
   if (it.bed) { it.bed.items.splice(it.bed.items.indexOf(it), 1); it.bed = null; }
+  it.fly = null;
   it.heldBy = cat;
   cat.held = it;
   cat.mouth.add(it.mesh);
@@ -212,22 +213,25 @@ function snapshot() {
   if (!started) return;
   save.items = world.items.map((it) => {
     const h = it.heldBy, p = h ? h.pos : it.mesh.position;
-    // something still in a mouth is remembered as lying at that cat's feet
-    return { n: it.name, r: h ? world.region : it.region, x: +p.x.toFixed(2), y: +(h ? h.pos.y + it.rest : p.y).toFixed(2), z: +p.z.toFixed(2), b: h ? -1 : world.beds.indexOf(it.bed), s: it.slot || 0, a: +(h ? 0 : it.mesh.rotation.y).toFixed(2) };
+    const y = h ? h.pos.y + it.rest : it.fly ? world.supportAt(p.x, p.z, p.y, 0.05) + it.rest : p.y;
+    return { i: it.id, n: it.name, r: h ? world.region : it.region, x: +p.x.toFixed(2), y: +y.toFixed(2), z: +p.z.toFixed(2), b: !h && it.bed ? it.bed.id : '', s: it.slot || 0, a: +(h ? 0 : it.mesh.rotation.y).toFixed(2) };
   });
   if (players[0]) save.cat = cats.indexOf(players[0].cat);
   persist();
 }
 function restoreItems() {
-  if (!Array.isArray(save.items) || save.items.length !== world.items.length) return;
+  if (!Array.isArray(save.items)) return;
+  const byId = new Map(world.items.map((it) => [it.id, it]));
   save.items.forEach((s, i) => {
-    const it = world.items[i];
-    if (!s || s.n !== it.name || !world.regions[s.r]) return;
+    if (!s) return;
+    // older saves went by place in the list and by bed number; things added since then are all at the end
+    const it = s.i ? byId.get(s.i) : world.items[i];
+    if (!it || s.n !== it.name || !world.regions[s.r]) return;
     it.region = s.r;
     world.regions[s.r].group.add(it.mesh);
     it.mesh.position.set(s.x, s.y, s.z);
     it.mesh.rotation.set(0, s.a || 0, 0);
-    const bed = world.beds[s.b];
+    const bed = typeof s.b === 'number' ? world.beds[s.b] : world.beds.find((q) => q.id === s.b);
     if (bed && bed.region === s.r) { it.bed = bed; it.slot = s.s || 0; bed.items.push(it); }
   });
 }
@@ -251,15 +255,29 @@ function eat(cat, bowl) {
   say(cat, bowl.kind === 'food' ? 'munch' : 'lap', 2);
 }
 
+// something in the garden that does something when batted: a tap, a swing, the chimes
+function nearSwitch(cat) {
+  let best = null, bd = 99;
+  for (const sw of world.switches) {
+    if (sw.region !== world.region || (sw.ok && !sw.ok(cat))) continue;
+    const d = Math.hypot(sw.x - cat.pos.x, sw.z - cat.pos.z);
+    if (d < sw.r && d < bd) { best = sw; bd = d; }
+  }
+  return best;
+}
+
 // ---------- the "do" button ----------
 function doAction(cat) {
   if (cat.state !== 'free' || !cat.grounded) return;
   const bed = world.bedAt(cat.pos);
   if (cat.held) return drop(cat, bed);
   const item = nearestItem(cat);
-  if (item) return pickUp(cat, item);
+  // a pot up on a wall gets batted off; anything else is picked up
+  if (item) return item.name === 'pot' && item.mesh.position.y - item.rest > cat.pos.y + 0.25 ? world.knock(item, cat) : pickUp(cat, item);
   const bowl = nearBowl(cat);
   if (bowl) return eat(cat, bowl);
+  const sw = nearSwitch(cat);
+  if (sw) return sw.press(cat);
   if (!bed && mama.state === 'free' && mama.grounded) {
     if (cat.isKitten && flat(cat, mama) < 1.1 && Math.abs(cat.pos.y - mama.pos.y) < 0.5) return mount(cat);
   }
@@ -300,6 +318,12 @@ function control(p, dt) {
     } else if (d.act || d.jump) dismount(cat);
     return;
   }
+  if (cat.state === 'sit') {
+    // on a swing: push the stick to go higher, jump or "do" to hop off
+    cat.seat.ride(cat, mag);
+    if ((d.jump || d.act) && cat.stateTime > 0.3) cat.seat.release(cat, true);
+    return;
+  }
   if (cat.state === 'curl' || cat.state === 'eat') {
     if ((mag > 0.5 || d.jump) && cat.stateTime > 0.4) cat.uncurl();
     return;
@@ -328,6 +352,8 @@ function pointsOfInterest() {
     ...world.bowls.filter((p) => p.region === r).map((p) => ({ x: p.x, y: p.y, z: p.z, stop: 0.6 })),
     ...world.beds.filter((p) => p.region === r).map((p) => ({ x: p.x, y: p.y, z: p.z, stop: 0.3 })),
     ...world.items.filter((p) => p.region === r && !p.heldBy && !p.bed).map((p) => ({ x: p.mesh.position.x, y: p.mesh.position.y - p.rest, z: p.mesh.position.z, stop: 0.45 })),
+    ...world.switches.filter((p) => p.region === r && p.poi).map((p) => ({ x: p.x, y: p.y, z: p.z, stop: p.r * 0.8 })),
+    ...world.pois.filter((p) => p.region === r),
   ];
 }
 function scout(cat, lead, a, dt) {
@@ -363,6 +389,46 @@ function scout(cat, lead, a, dt) {
   return true;
 }
 
+// When someone gets on the see-saw, one of the others comes and sits on the far end.
+const play = { mate: null, side: 0, until: 0, epoch: 0 };
+function updatePlaymate() {
+  const ss = world.seesaw;
+  const on = world.region === 'outside' && !sleep.active ? players.filter((q) => q.human && ss.side(q.cat)) : [];
+  if (on.length) {
+    play.side = ss.side(on[0].cat);
+    play.until = time + 2.5;
+    const taken = players.some((q) => q.human && ss.side(q.cat) === -play.side); // a second player is already there
+    if (taken) play.mate = null;
+    else if (!play.mate || isHuman(play.mate) || play.mate.state === 'ride') {
+      const free = cats.filter((c) => !isHuman(c) && c.state === 'free' && flat(c, on[0].cat) < 9).sort((a, b) => (b.isKitten - a.isKitten) || flat(a, on[0].cat) - flat(b, on[0].cat));
+      play.mate = free[0] || null;
+      play.epoch++;
+    }
+  } else if (time > play.until && play.mate) { const a = aiState(play.mate); a.lead = null; a.summon = 2.8; play.mate = null; } // game over: run back to the others
+}
+function playSeesaw(cat, a, dt) {
+  const ss = world.seesaw, tx = ss.cx - play.side * 1.2, tz = ss.cz;
+  if (a.ssEpoch !== play.epoch) { a.ssEpoch = play.epoch; a.ssRound = false; a.ssT = 0; }
+  if (cat.state === 'curl') cat.uncurl();
+  if (cat.state === 'climb') return cat.physics(dt, -cat.climbN.x * cat.speed, -cat.climbN.z * cat.speed, false, world);
+  const go = (x, z, k = 1) => { const dx = x - cat.pos.x, dz = z - cat.pos.z, d = Math.hypot(dx, dz) + 0.001, v = Math.min(cat.speed * k, d * 6); cat.physics(dt, (dx / d) * v, (dz / d) * v, false, world); };
+  if (!cat.grounded) return go(tx, tz, 0.5);
+  if (ss.side(cat)) {
+    // on the plank: shuffle along to the seat, then sit tight and watch
+    a.ssT = 0;
+    if (Math.abs(cat.pos.x - tx) > 0.12) return go(tx, tz, 0.6);
+    cat.physics(dt, 0, 0, false, world);
+    cat.yaw = dampAngle(cat.yaw, Math.atan2(play.side, 0), 6, dt);
+    return;
+  }
+  // on the grass: go round to the tip of that end, then walk in along the plank
+  a.ssT += dt;
+  if (a.ssT > 4) { a.ssT = 0; fx.poof(cat.pos.clone(), 4); cat.teleport(tx, ss.top(tx), tz); cat.grounded = true; cat.support = cat.pos.y; return; }
+  const ex = ss.cx - play.side * (ss.L + 0.6);
+  if (!a.ssRound && Math.hypot(cat.pos.x - ex, cat.pos.z - tz) < 0.25) a.ssRound = true;
+  go(a.ssRound ? tx : ex, tz);
+}
+
 function ai(cat, dt, idx) {
   const a = aiState(cat);
   if (a.answer > 0) {
@@ -370,6 +436,7 @@ function ai(cat, dt, idx) {
     if (a.answer <= 0) { audio.play(cat.isKitten ? 'mew' : 'trill', { vol: 0.55 }); cat.meowT = 0.4; say(cat, cat.isKitten ? 'mew' : 'purr', 1); }
   }
   if (cat.state === 'eat') return;
+  if (cat.state === 'sit') return cat.seat.release(cat); // nobody is steering her any more
   const nap = napLead();
   if (cat.state === 'ride') {
     // hop down once mama has stopped somewhere with room
@@ -405,6 +472,7 @@ function ai(cat, dt, idx) {
   a.bedT = 0;
   if (cat.state === 'curl') { if (cat.stateTime > 0.7 + idx * 0.25 && !sleep.active) cat.uncurl(); return; }
 
+  if (play.mate === cat) return playSeesaw(cat, a, dt);
   const lead = leaderOf(cat);
   if (!lead) return cat.physics(dt, 0, 0, false, world);
   const dx = lead.pos.x - cat.pos.x, dz = lead.pos.z - cat.pos.z, dy = lead.pos.y - cat.pos.y;
@@ -439,7 +507,7 @@ function ai(cat, dt, idx) {
     const c = tr[a.ptr - first];
     if (Math.hypot(c.x - cat.pos.x, c.z - cat.pos.z) < 0.4 && Math.abs(c.y - cat.pos.y) < 1.0) { a.ptr++; a.stuck = 0; } else { crumb = c; break; }
   }
-  const tooHigh = cat.isKitten && d < 3 && (dy > cat.climbMax || (crumb && crumb.y - cat.pos.y > cat.climbMax));
+  const tooHigh = cat.isKitten && d < 3 && (dy > cat.rideOver || (crumb && crumb.y - cat.pos.y > cat.rideOver));
   // far behind for a while, or mama is up somewhere a kitten can't reach: scamper to catch up, or hop on
   const behindBy = lead.trailN - a.ptr - keep;
   a.lagT = behindBy > 6 || (tooHigh && leadOk) ? (a.lagT || 0) + dt : 0;
@@ -498,6 +566,7 @@ function arrive(p, lead) {
   let n = 0;
   for (const c of order) {
     if (c.state === 'ride') continue;
+    if (c.state === 'sit') c.seat.release(c);
     if (c.state !== 'free') c.setState('free');
     c.asleep = false;
     let spot = [p.tx, p.ty, p.tz];
@@ -660,6 +729,7 @@ const menu = new Menu({
     const k = cats[cats.length - 1];
     for (const p of players) if (p.cat === k) p.cat = cats.find((c) => c !== k && !players.some((q) => q !== p && q.cat === c));
     if (k.state === 'ride') dismount(k);
+    if (k.state === 'sit') k.seat.release(k);
     if (k.held) drop(k, null);
     fx.poof(k.pos.clone());
     scene.remove(k.group, k.blob);
@@ -711,10 +781,35 @@ if (save.den && world.regions[save.den.region]) {
   sleep.rested = true;
 }
 
-world.emit = (what, pos) => {
+// a word that floats up from a thing rather than a cat
+const wordAt = {};
+function sayAt(pos, word, cooldown = 2.5) {
+  if ((wordAt[word] || 0) > time) return;
+  wordAt[word] = time + cooldown;
+  labels.say(V(pos.x, pos.y + 0.55, pos.z), word);
+}
+// how loud something over there is from where we are looking
+const heard = (pos, range = 16) => clamp(1 - Math.hypot(pos.x - cam.target.x, pos.z - cam.target.z) / range, 0, 1);
+const CHIME = [523.25, 587.33, 659.25, 783.99, 880]; // five notes that sound well in any order
+world.emit = (what, pos, a, b) => {
+  const near = heard(pos);
   if (what === 'plop') { audio.play('plop', { vol: 0.6 }); fx.ripple(pos); }
   else if (what === 'flutter') audio.play('flutter', { vol: 0.35 });
+  else if (what === 'flock') { audio.play('flutter', { vol: 0.6 * near }); audio.play('flutter', { vol: 0.4 * near, rate: 0.8 }); }
   else if (what === 'ball') audio.play('bell', { vol: 0.4 });
+  else if (what === 'clunk') audio.play('thump', { vol: 0.3 * near, rate: 1.4 });
+  else if (what === 'fling') { audio.play('boing', { vol: 0.4, rate: a.isKitten ? 1.3 : 1.05 }); say(a, 'whee', 2.5); rumble(a, 0.3, 0.15, 120); }
+  else if (what === 'creak') audio.play('creak', { vol: 0.14 * near, rate: 1.25 });
+  else if (what === 'swing') { audio.play('creak', { vol: 0.25, rate: 1.1 }); say(a, 'whoosh', 5); }
+  else if (what === 'tapOn') { audio.play('tick', { vol: 0.6, rate: 0.7 }); sayAt(pos, 'hiss', 3); }
+  else if (what === 'tapOff') { audio.play('tick', { vol: 0.5 * near, rate: 0.6 }); if (a) sayAt(pos, 'drip', 3); }
+  else if (what === 'sprinkled') { fx.ripple(pos); audio.play('splash', { vol: 0.14, rate: 1.5 }); if (isHuman(a)) say(a, 'splash', 6); }
+  else if (what === 'plate') { audio.note(196, { vol: 0.4, decay: 0.14, wood: true }); sayAt(pos, 'click', 4); }
+  else if (what === 'pour') audio.play('plop', { vol: 0.22 * near, rate: 1.3 });
+  else if (what === 'clack') { audio.note(620, { vol: 0.5 * near, decay: 0.18, wood: true }); if (near > 0.3) sayAt(pos, 'clack', 5); }
+  else if (what === 'chime') { audio.note(CHIME[a], { vol: 0.28, decay: 1.7 }); sayAt(pos, 'ding', 2.5); }
+  else if (what === 'knock') audio.play('tick', { vol: 0.5, rate: 0.8 });
+  else if (what === 'tock') { audio.note(240, { vol: 0.45 * near, decay: 0.11, wood: true }); if (near > 0.3) sayAt(pos, 'tock', 2); }
 };
 
 // ---------- weather: now and then a gentle shower, which makes indoors feel better ----------
@@ -738,6 +833,7 @@ function updateAudio(dt) {
   let water = 0;
   if (!inside) for (const p of world.ponds) water = Math.max(water, 1 - Math.hypot(p.x - mama.pos.x, p.z - mama.pos.z) / (p.rx * 2 + 4));
   audio.loop('amb_water', Math.max(0, water) * 0.3);
+  audio.hiss(inside ? 0 : world.spray.k * 0.2 * heard(world.spray, 15));
   audio.loop('amb_fire', world.region === 'home' ? 0.45 : 0);
   audio.loop('amb_room', inside && world.region !== 'home' ? 0.25 : 0);
   audio.loop('purr', sleep.active ? 0.55 : napLead() ? 0.3 : 0);
@@ -772,6 +868,7 @@ function pickAt(sx, sy, me) {
   for (const it of world.items) if (it.region === world.region && !it.heldBy) consider(it.mesh.position, 0.4, () => ({ kind: 'item', item: it, x: it.mesh.position.x, y: it.mesh.position.y - it.rest, z: it.mesh.position.z }));
   for (const b of world.bowls) if (b.region === world.region) consider(V(b.x, b.y + 0.1, b.z), 0.45, () => ({ kind: 'bowl', bowl: b, x: b.x, y: b.y, z: b.z }));
   for (const p of world.portals) if (p.region === world.region) consider(V(p.x, p.y + 0.35, p.z), 0.6, () => ({ kind: 'portal', portal: p, x: p.x, y: p.y, z: p.z }));
+  for (const sw of world.switches) if (sw.region === world.region) consider(V(sw.x, sw.y + 0.6, sw.z), 0.5, () => ({ kind: 'switch', sw, x: sw.x, y: sw.y, z: sw.z }));
   // a clear hit on a thing wins; a near miss on a cat gives way to a bed under the finger
   const nearCat = best && (best.kind === 'self' || best.kind === 'cat') && bestK > 0.55;
   if (best && !nearCat) return best;
@@ -896,6 +993,9 @@ function finishGoal(g) {
     if (me.held) drop(me, g.pick.bed); else curlUp(me);
   } else if (k === 'mount') {
     if (flat(me, mama) < 1.3 && mama.state === 'free' && mama.grounded) mount(me);
+  } else if (k === 'switch') {
+    const sw = g.pick.sw;
+    if (Math.hypot(sw.x - me.pos.x, sw.z - me.pos.z) < sw.r + 0.25 && (!sw.ok || sw.ok(me))) sw.press(me);
   }
 }
 
@@ -959,6 +1059,7 @@ function handleTap(ev, p) {
     return;
   }
   if (ev.double && goal) { tapRaw.jump = true; return; } // a second quick tap: hop on the way
+  if (me.state === 'sit') { goal = null; me.seat.release(me, true); return; } // any tap hops off the swing
   let pick = pickAt(ev.x, ev.y, me);
   if (pick.kind === 'self') {
     goal = null;
@@ -976,7 +1077,7 @@ function handleTap(ev, p) {
   }
   const mover = moverOf(me);
   const dest = { x: pick.x, y: pick.y, z: pick.z, c: pick.c || (pick.y > mover.step + 0.15 ? supportCollider(pick.x, pick.z, pick.y) : null) };
-  goal = { cat: me, pick, dest, region: world.region, fails: 0, reach: { item: mover.radius + 0.42, bowl: mover.radius + 0.45 }[pick.kind] || 0 };
+  goal = { cat: me, pick, dest, region: world.region, fails: 0, reach: { item: mover.radius + 0.42, bowl: mover.radius + 0.45, switch: mover.radius + 0.5 }[pick.kind] || 0 };
   plan(goal);
   fx.ripple(V(pick.x, 0, pick.z), pick.y + 0.07);
 }
@@ -1073,6 +1174,7 @@ function step(dt) {
           }
         }
       }
+      updatePlaymate();
       cats.forEach((c, i) => {
         c.useLatch = (isHuman(c) || c.driven) && !(goal && moverOf(goal.cat) === c);
         if (!isHuman(c) && !c.driven && players.length) ai(c, dt, i);
@@ -1112,6 +1214,7 @@ function step(dt) {
       if (c.eatT <= 0) { c.setState('free'); fx.hearts(headPos(c), 2); }
     }
     for (const e of c.events) {
+      if (e === 'land' || e === 'thump') world.landed(c, c.landV || 0);
       if (e === 'jump') { audio.play('hop', { vol: 0.35, rate: c.isKitten ? 1.3 : 1 }); if (isHuman(c) && time - (c.boingAt || -9) > 1.5) say(c, 'hop', 4); }
       else if (e === 'thump') { rumble(c, 0.35, 0.1, 90); fx.poof(c.pos.clone(), 5); audio.play(region().indoor ? 'thump' : 'hop', { vol: 0.5 }); }
       else if (e === 'boing') {
@@ -1122,9 +1225,9 @@ function step(dt) {
         rumble(c, 0.25, 0.1, 70);
       } else if (e === 'land' && isHuman(c)) rumble(c, 0.12, 0, 40);
       else if ((e === 'climb' || e === 'top') && c === mama && mama.climbBox) {
-        // mama is going up something the kittens can't manage: they hop on
+        // mama is going up something tall: kittens nobody is steering hop on rather than scramble after her
         for (const k of cats) {
-          if (k.isKitten && !isHuman(k) && k.state === 'free' && flat(mama, k) < 4.5 && mama.climbBox.y1 - k.pos.y > k.climbMax) { fx.poof(k.pos.clone(), 4); mount(k); }
+          if (k.isKitten && !isHuman(k) && k.state === 'free' && flat(mama, k) < 4.5 && mama.climbBox.y1 - k.pos.y > k.rideOver) { fx.poof(k.pos.clone(), 4); mount(k); }
         }
       }
     }

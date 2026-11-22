@@ -3,6 +3,7 @@ import { Builder, rng, tint, toon, glowMat } from './build.js';
 import * as P from './props.js';
 import { buildRooms } from './rooms.js';
 import { buildCritters } from './critters.js';
+import { buildToys } from './toys.js';
 
 const { C } = P;
 
@@ -16,11 +17,12 @@ export function buildWorld(scene) {
   W.floorAt = () => 0;
   W.bounds = () => W.regions[W.region].bounds;
   W.inPond = (x, y, z) => y < 0.1 && W.region === 'outside' && W.ponds.some((p) => ((x - p.x) / p.rx) ** 2 + ((z - p.z) / p.rz) ** 2 < 1);
-  W.addBed = (name, region, p, r = 0.7) => { W.beds.push({ name, region, x: p.x, y: p.y, z: p.z, r, items: [] }); };
+  W.addBed = (name, region, p, r = 0.7) => { W.beds.push({ id: `${name}@${region}:${p.x.toFixed(1)},${p.z.toFixed(1)}`, name, region, x: p.x, y: p.y, z: p.z, r, items: [] }); };
   W.bedAt = (p) => W.beds.find((b) => b.region === W.region && Math.hypot(p.x - b.x, p.z - b.z) < b.r && Math.abs(p.y - b.y) < 0.45) || null;
   W.addItem = (name, region, p) => {
     const it = P.makeItem(name);
     it.region = region;
+    it.id = `${name}@${region}:${p.x.toFixed(1)},${p.z.toFixed(1)}`; // where it started: a name that survives new things being added
     it.mesh.position.set(p.x, p.y + it.rest, p.z);
     W.regions[region].group.add(it.mesh);
     W.items.push(it);
@@ -142,21 +144,7 @@ export function buildWorld(scene) {
   vegGarden(W, at(24), rand, out);
   wildGarden(W, at(48), rand, out);
 
-  buildCritters(W, out, rand);
-
-  W.setRegion = (id) => {
-    W.region = id;
-    for (const r of Object.values(W.regions)) r.group.visible = r.id === id;
-  };
-  W.setRegion('outside');
-
-  const dayGlass = new THREE.Color('#a9cfe0'), nightGlass = new THREE.Color('#ffd98a');
-  W.setLit = (lit) => {
-    glowMat.color.copy(dayGlass).lerp(nightGlass, lit);
-    for (const n of W.nightLights) n.light.intensity = n.power * lit;
-  };
-
-  // floor height at a point, for something whose feet are near y
+  // floor height and walls are needed by the toys and the birds, so they come first
   W.supportAt = (x, z, y, reach = 0.4) => {
     let sup = 0;
     for (const c of W.colliders) if (x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1 && c.y1 <= y + reach && c.y1 > sup) sup = c.y1;
@@ -169,6 +157,21 @@ export function buildWorld(scene) {
       if (Math.hypot(x - cx, z - cz) < r) return true;
     }
     return false;
+  };
+
+  buildToys(W, out);
+  buildCritters(W, out, rand);
+
+  W.setRegion = (id) => {
+    W.region = id;
+    for (const r of Object.values(W.regions)) r.group.visible = r.id === id;
+  };
+  W.setRegion('outside');
+
+  const dayGlass = new THREE.Color('#a9cfe0'), nightGlass = new THREE.Color('#ffd98a');
+  W.setLit = (lit) => {
+    glowMat.color.copy(dayGlass).lerp(nightGlass, lit);
+    for (const n of W.nightLights) n.light.intensity = n.power * lit;
   };
 
   W.update = (dt, t, cats, night) => {
@@ -312,7 +315,7 @@ function home(W, b, rand, out) {
 
 // ---------------- the garden with the treehouse ----------------
 function treehouseGarden(W, b, rand, out) {
-  const ok = (x, z) => rectExcl([[-8.2, -3.8, -7.2, -2.8], [-4, 0.2, 5, 8], [6.2, 8.8, 4.2, 6.8]])(x, z) && pondExcl([[8, -5.5, 1.5, 1.5]])(x, z);
+  const ok = (x, z) => rectExcl([[-8.2, -3.8, -7.2, -2.8], [-4, 0.2, 5, 8], [6.2, 8.8, 4.2, 6.8], [3.9, 7.3, 0.8, 1.6]])(x, z) && pondExcl([[8, -5.5, 1.5, 1.5]])(x, z);
   P.patches(b, rand, 12, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 200, -11.5, 11.5, -10.5, 11, ok);
   P.house(b, { wall: '#cfdde2', roof: C.slateD, style: 'clapboard', door: { x: -6.5, color: C.red, porch: C.white }, windows: [[-10.5, -8.6, 1.3, 3.0], [-3.5, -1.2, 1.3, 3.0], [6.5, 9.5, 1.3, 3.0]], shutters: C.navy, boxes: [0, 2], chimney: -1.5, pipe: 4.4, curtains: '#f6e7a8', dormers: [-5, 4], trellis: [[0.6, 2.8, C.red]], baskets: [-8.0, -5.0] });
@@ -335,17 +338,9 @@ function treehouseGarden(W, b, rand, out) {
   b.box(0.5, 0.54, 3.2, 4.3, -3.5, -2.6, '#3d2c22');
   b.box(-1.6, -0.6, 3.9, 4.5, -2.0, -1.96, '#ffffff', { layer: 'glow' });
   W.link('outside', b.p(0.92, 3.2, -3.05), [1, 0], 'treehouse', W.roomDoor.treehouse, [1, 0], 'creak');
-  // swing
+  // swing frame (the seat is in toys.js)
   for (const z of [3.2, 5.6]) { b.beam([-8.2, 0, z], [-7.6, 2.3, z], 0.06, C.metal); b.beam([-7.0, 0, z], [-7.6, 2.3, z], 0.06, C.metal); }
   b.beam([-7.6, 2.3, 3.2], [-7.6, 2.3, 5.6], 0.06, C.metal);
-  const swing = new THREE.Group();
-  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.7), toon(C.red));
-  seat.position.y = -1.7; seat.castShadow = true;
-  const rope = new THREE.CylinderGeometry(0.015, 0.015, 1.7, 4);
-  for (const z of [-0.3, 0.3]) { const r = new THREE.Mesh(rope, toon(C.hay)); r.position.set(0, -0.85, z); swing.add(r); }
-  swing.add(seat);
-  b.dyn(swing, -7.6, 2.3, 4.4);
-  W.updaters.push((dt, t) => { swing.rotation.z = Math.sin(t * 1.3) * 0.22; });
   // sandpit
   b.box(-8.2, -3.8, 0, 0.16, -7.2, -2.8, C.wood); b.box(-8.0, -4.0, 0.05, 0.18, -7.0, -3.0, C.sand);
   b.solid(-8.2, -3.8, 0, 0.16, -7.2, -2.8, { climb: false });
@@ -408,7 +403,7 @@ function treehouseGarden(W, b, rand, out) {
 
 // ---------------- the garden with the koi pond ----------------
 function pondGarden(W, b, rand, out) {
-  const ok = (x, z) => rectExcl([[-11.6, -5.3, -4.6, 1.6], [3.6, 8.4, 5.4, 9.6]])(x, z) && pondExcl([[0.5, 2.2, 4.6, 3.1]])(x, z);
+  const ok = (x, z) => rectExcl([[-11.6, -5.3, -4.6, 1.6], [3.6, 8.4, 5.4, 9.6], [3.8, 5.0, -4.0, -2.8], [2.1, 3.6, -5.2, -4.4]])(x, z) && pondExcl([[0.5, 2.2, 4.6, 3.1]])(x, z);
   P.patches(b, rand, 10, -11, 11, -10, 10.5, ok, [C.moss, C.grassD]);
   P.tufts(b, rand, 150, -11.5, 11.5, -10.5, 11, ok);
   P.house(b, { wall: '#e9e2d2', roof: '#4f5d68', trim: C.barkD, base: C.stoneD, style: 'timber', windows: [[-9, -6.4, 1.2, 3.2], [-1.3, 1.3, 0.6, 3.2], [6.3, 8.8, 1.2, 3.2]], curtains: '#f6f1e4', dormers: [0] });
@@ -537,7 +532,7 @@ function vegGarden(W, b, rand, out) {
 
 // ---------------- the overgrown garden ----------------
 function wildGarden(W, b, rand, out) {
-  const ok = rectExcl([[-11.8, -7.2, -9.8, -5.2], [4.2, 6.8, 3.6, 8.4], [-3.8, -0.2, 4.2, 5.8]]);
+  const ok = rectExcl([[-11.8, -7.2, -9.8, -5.2], [4.2, 6.8, 3.6, 8.4], [-3.8, -0.2, 4.2, 5.8], [-7.5, -6.5, 5.9, 6.9]]);
   P.patches(b, rand, 16, -11, 11, -10, 10.5, ok, [C.moss, C.grassD, '#93b552']);
   P.tufts(b, rand, 330, -11.5, 11.5, -10.5, 11, ok);
   // long grass to wade through

@@ -452,6 +452,10 @@ export function makeItem(name) {
     part(sph, C.teal, 0, 0, 0, 0.06, 0.05, 0.13); part(sph, C.teal, 0, 0, -0.16, 0.07, 0.04, 0.03); part(sph, C.white, 0.03, 0.02, 0.09, 0.015); rest = 0.05;
   } else if (name === 'acorn') {
     part(sph, C.wood, 0, 0, 0, 0.06, 0.07, 0.06); part(sph, C.barkD, 0, 0.04, 0, 0.065, 0.035, 0.065); rest = 0.06;
+  } else if (name === 'pot') {
+    part(new THREE.CylinderGeometry(0.1, 0.072, 0.14, 8), C.terracotta, 0, 0, 0); part(new THREE.CylinderGeometry(0.112, 0.112, 0.03, 8), tint(C.terracotta, 0.05), 0, 0.065, 0);
+    part(sph, C.leaf, 0, 0.1, 0, 0.085, 0.05, 0.085); part(sph, C.pink, 0, 0.18, 0, 0.06, 0.05, 0.06); part(sph, C.yellow, 0, 0.215, 0, 0.025); part(new THREE.CylinderGeometry(0.01, 0.01, 0.1, 4), C.leafD, 0, 0.13, 0);
+    rest = 0.07;
   } else if (name === 'mitten') {
     part(sph, C.yellow, 0, 0, 0, 0.09, 0.05, 0.13); part(sph, C.yellow, 0.09, 0, 0.02, 0.04, 0.04, 0.06); part(sph, C.white, 0, 0, -0.12, 0.09, 0.055, 0.04); rest = 0.05;
   }

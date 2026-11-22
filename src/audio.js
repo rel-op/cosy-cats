@@ -67,6 +67,49 @@ export class Audio {
     src.start();
   }
 
+  // A struck note made on the spot, so chimes are exactly in tune with each other.
+  // `wood` is a short hollow knock (bamboo on stone) rather than a ring.
+  note(freq, { vol = 0.3, decay = 1.4, wood = false } = {}) {
+    this.log.push({ t: this.time, note: freq, vol, wood });
+    if (!this.ok) return;
+    const t = this.ctx.currentTime, out = this.ctx.createGain();
+    out.gain.value = vol;
+    out.connect(this.master);
+    // a bar's overtones are not whole multiples, which is what makes it sound struck rather than sung
+    for (const [mult, amp, len] of wood ? [[1, 1, 1], [2.4, 0.5, 0.5], [5.1, 0.3, 0.25]] : [[1, 1, 1], [2.76, 0.3, 0.45], [5.4, 0.12, 0.2]]) {
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = 'sine';
+      o.frequency.value = freq * mult;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(amp, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + decay * len);
+      o.connect(g).connect(out);
+      o.start(t);
+      o.stop(t + decay * len + 0.05);
+    }
+  }
+
+  // the tsk-tsk-tsk of a garden sprinkler, made from filtered noise; call each frame with the volume wanted
+  hiss(vol) {
+    if (!this.ok) return;
+    if (!this.spray) {
+      if (vol <= 0) return;
+      const n = this.ctx.sampleRate * 2, buf = this.ctx.createBuffer(1, n, this.ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+      const src = this.ctx.createBufferSource(), band = this.ctx.createBiquadFilter(), pulse = this.ctx.createGain(), gain = this.ctx.createGain(), lfo = this.ctx.createOscillator(), depth = this.ctx.createGain();
+      src.buffer = buf; src.loop = true;
+      band.type = 'bandpass'; band.frequency.value = 5200; band.Q.value = 0.7;
+      pulse.gain.value = 0.6;
+      lfo.type = 'sawtooth'; lfo.frequency.value = 6.5; depth.gain.value = 0.4;
+      lfo.connect(depth).connect(pulse.gain);
+      gain.gain.value = 0;
+      src.connect(band).connect(pulse).connect(gain).connect(this.ambFilter);
+      src.start(); lfo.start();
+      this.spray = gain;
+    }
+    this.spray.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.25);
+  }
+
   startLoop(name) {
     const l = this.loops.get(name);
     if (!l || l.src || !this.buffers.has(name) || !this.ok) return;

@@ -3,6 +3,8 @@ import { toon } from './build.js';
 import { C } from './props.js';
 import { Cat, coatById } from './cat.js';
 
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
 // Ambient life. None of it needs anything from the player; most of it barely notices the cats.
 export function buildCritters(W, out, rand) {
   const sph = new THREE.SphereGeometry(1, 8, 6);
@@ -70,6 +72,101 @@ export function buildCritters(W, out, rand) {
       }
     }
   });
+
+  // ---- a flock of doves: run at them and they all go up together, and come down somewhere else ----
+  // Sometimes that is just across the lawn and sometimes it is gardens away, so following them is a game
+  // that starts and stops by itself. After a few goes they sit somewhere high for a while.
+  {
+    const N = 7, doves = [], white = '#f6f2ea', grey = '#b4b9c4';
+    for (let i = 0; i < N; i++) {
+      const g = new THREE.Group();
+      part(g, sph, white, 0, 0.12, 0, 0.095, 0.09, 0.14);
+      part(g, sph, white, 0, 0.21, 0.1, 0.07);
+      part(g, sph, C.orange, 0, 0.2, 0.175, 0.022, 0.018, 0.035);
+      part(g, sph, grey, 0, 0.11, -0.14, 0.06, 0.02, 0.09);
+      part(g, sph, C.dark, 0.04, 0.225, 0.14, 0.012); part(g, sph, C.dark, -0.04, 0.225, 0.14, 0.012);
+      const wl = part(g, sph, grey, -0.1, 0.15, -0.01, 0.1, 0.02, 0.085), wr = part(g, sph, grey, 0.1, 0.15, -0.01, 0.1, 0.02, 0.085);
+      out.add(g);
+      const a = (i / N) * 6.28 + rand(), r = 0.25 + rand() * 0.75;
+      doves.push({ g, wl, wr, ox: Math.cos(a) * r, oz: Math.sin(a) * r, t: rand() * 2, hop: 0, k: 1, wait: 0, dur: 1, arc: 1, from: new THREE.Vector3(), to: new THREE.Vector3(), ph: rand() * 6 });
+    }
+    // somewhere high to sit: the washing line, the swing frame, the scarecrow's arms, the greenhouse ridge
+    const perches = [[[-6.4, 1.87, 8.17], [0.4, 1.87, 8.17]], [[-31.6, 2.37, 3.45], [-31.6, 2.37, 5.35]], [[29.75, 1.36, 2.0], [31.25, 1.36, 2.0]], [[12.6, 3.35, -3.8], [17.2, 3.35, -3.8]]];
+    let lawns = null; // open grass to land on, found once the gardens are built
+    const findLawns = () => {
+      lawns = [];
+      for (let x = -57; x <= 57; x += 1.9) for (let z = -8.2; z <= 9.8; z += 1.8) {
+        if (W.supportAt(x, z, 0.3, 0) > 0 || W.blockedAt(x, 0.02, z, 1.25, 1.2)) continue;
+        if (W.ponds.some((p) => ((x - p.x) / (p.rx + 1.2)) ** 2 + ((z - p.z) / (p.rz + 1.2)) ** 2 < 1)) continue;
+        lawns.push({ x, z });
+      }
+    };
+    const f = { x: -1.6, z: 4.8, mode: 'ground', flushes: 0, calm: 0, rest: 0, grace: 0, perch: null };
+    const send = (d, x, y, z, speed) => {
+      d.from.copy(d.g.position); d.to.set(x, y, z);
+      const dist = d.from.distanceTo(d.to);
+      d.dur = dist / speed + 0.5; d.arc = Math.min(4.2, 1.2 + dist * 0.13); d.k = 0; d.wait = rand() * 0.35;
+    };
+    const land = (spot) => { f.x = spot.x; f.z = spot.z; f.mode = 'fly'; f.perch = null; for (const d of doves) send(d, spot.x + d.ox, 0, spot.z + d.oz, 7.5); };
+    const roost = () => {
+      const p = perches.map((q) => ({ q, d: Math.hypot((q[0][0] + q[1][0]) / 2 - f.x, (q[0][2] + q[1][2]) / 2 - f.z) })).sort((a, b) => a.d - b.d)[rand() < 0.7 ? 0 : 1].q;
+      f.mode = 'fly'; f.perch = p; f.x = (p[0][0] + p[1][0]) / 2; f.z = (p[0][2] + p[1][2]) / 2;
+      doves.forEach((d, i) => { const k = (i + 0.5) / N; send(d, p[0][0] + (p[1][0] - p[0][0]) * k, p[0][1], p[0][2] + (p[1][2] - p[0][2]) * k, 7.5); });
+    };
+    const pick = (cats, lo, hi) => {
+      const ok = lawns.filter((s) => { const d = Math.hypot(s.x - f.x, s.z - f.z); return d >= lo && d <= hi && cats.every((c) => Math.hypot(c.pos.x - s.x, c.pos.z - s.z) > 4.5); });
+      return ok.length ? ok[Math.floor(rand() * ok.length)] : null;
+    };
+    for (const d of doves) d.g.position.set(f.x + d.ox, 0, f.z + d.oz);
+    W.doves = { get state() { return { x: f.x, z: f.z, mode: f.mode, flushes: f.flushes, perched: !!f.perch }; }, birds: doves };
+    W.updaters.push((dt, t, cats, night) => {
+      if (W.region !== 'outside') return;
+      if (!lawns) findLawns();
+      f.grace -= dt;
+      if (f.mode === 'fly' && doves.every((d) => d.k >= 1)) { f.mode = f.perch ? 'perch' : 'ground'; f.grace = 0.8; f.rest = 11 + rand() * 7; }
+      if (f.mode === 'ground') {
+        f.calm += dt;
+        if (f.calm > 40) f.flushes = 0;
+        // someone running sets them off from further away than someone creeping
+        const startled = f.grace <= 0 && cats.some((c) => c.state !== 'ride' && Math.abs(c.pos.y) < 1.5 && Math.hypot(c.pos.x - f.x, c.pos.z - f.z) < (Math.hypot(c.vx, c.vz) > 2 ? 3.1 : 1.5));
+        if (startled || night > 0.75) {
+          if (startled) { f.flushes++; f.calm = 0; W.emit('flock', doves[0].g.position); }
+          if (f.flushes >= 3 || night > 0.75) roost();
+          else land((rand() < 0.6 && pick(cats, 5, 10)) || pick(cats, 13, 34) || pick(cats, 5, 40) || lawns[Math.floor(rand() * lawns.length)]);
+        }
+      } else if (f.mode === 'perch') {
+        f.rest -= dt;
+        if (f.rest <= 0 && night < 0.5) { f.flushes = 0; const spot = pick(cats, 3, 12) || pick(cats, 3, 40); if (spot) land(spot); else f.rest = 4; }
+      }
+      for (const d of doves) {
+        const p = d.g.position;
+        if (d.k < 1) {
+          if ((d.wait -= dt) > 0) continue;
+          d.k = Math.min(1, d.k + dt / d.dur);
+          const e = d.k * d.k * (3 - 2 * d.k);
+          p.lerpVectors(d.from, d.to, e);
+          p.y += Math.sin(e * Math.PI) * d.arc + Math.sin(t * 5 + d.ph) * 0.08 * Math.sin(e * Math.PI);
+          d.g.rotation.set(0, Math.atan2(d.to.x - d.from.x, d.to.z - d.from.z), 0);
+          const flap = Math.sin(t * 26 + d.ph) * 1.15;
+          d.wl.rotation.z = flap; d.wr.rotation.z = -flap;
+          if (d.k >= 1) d.t = rand() * 1.5;
+        } else if (f.mode === 'perch' || (f.mode === 'fly' && f.perch)) {
+          d.wl.rotation.z = d.wr.rotation.z = 0;
+          d.g.rotation.x = 0;
+          d.g.rotation.y += Math.sin(t * 1.7 + d.ph) * dt * 0.5;
+        } else {
+          // pecking about on the grass
+          d.t -= dt;
+          if (d.t <= 0) { d.t = 0.6 + rand() * 2.2; d.hop = 0.22; d.g.rotation.y += (rand() - 0.5) * 2.2; d.ox = clamp(d.ox + (rand() - 0.5) * 0.5, -1, 1); d.oz = clamp(d.oz + (rand() - 0.5) * 0.5, -1, 1); }
+          d.hop = Math.max(0, d.hop - dt);
+          p.x += (f.x + d.ox - p.x) * Math.min(1, dt * 6); p.z += (f.z + d.oz - p.z) * Math.min(1, dt * 6);
+          p.y = Math.sin((d.hop / 0.22) * Math.PI) * 0.07;
+          d.g.rotation.x = Math.sin(t * 5 + d.ph) > 0.75 ? 0.7 : 0;
+          d.wl.rotation.z = d.wr.rotation.z = 0;
+        }
+      }
+    });
+  }
 
   // ---- butterflies over the flower patches ----
   const flies = [];

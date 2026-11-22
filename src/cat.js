@@ -44,8 +44,10 @@ export class Cat {
     this.speed = k ? 3.3 : 3.9;
     this.jumpV = k ? 4.3 : 5.6;
     this.step = k ? 0.22 : 0.36;
-    this.climbMax = k ? 0.8 : 99;
-    this.climbSpeed = k ? 1.6 : 2.5;
+    this.climbMax = 99; // every cat climbs anything climbable
+    this.rideOver = 0.8; // a kitten nobody is steering hops on mama's back rather than climb more than this
+    this.climbSpeed = k ? 2.2 : 2.5;
+    this.weight = k ? 0.45 : 1;
 
     this.pos = new THREE.Vector3();
     this.yaw = Math.PI / 4;
@@ -405,6 +407,7 @@ export class Cat {
         this.events.push('boing');
       } else {
         this.grounded = true;
+        this.landV = -this.vy; // how hard: a see-saw wants to know
         this.squash = Math.min(1, 0.25 + -this.vy * 0.08);
         this.events.push(this.vy < -6 ? 'thump' : 'land');
         this.vy = 0;
@@ -499,7 +502,7 @@ export class Cat {
     const onGround = s === 'free' && this.grounded;
     const kneading = s === 'curl' && this.stateTime < 1.1 && !this.asleep;
     this.aRun = damp(this.aRun, onGround ? Math.min(1, sp / this.speed) : 0, 12, dt);
-    this.aCurl = damp(this.aCurl, s === 'ride' ? 1 : s === 'curl' ? (kneading ? 0.35 : 1) : 0, 7, dt);
+    this.aCurl = damp(this.aCurl, s === 'ride' ? 1 : s === 'sit' ? 0.75 : s === 'curl' ? (kneading ? 0.35 : 1) : 0, 7, dt);
     this.aClimb = damp(this.aClimb, s === 'climb' ? 1 : 0, 12, dt);
     this.aAir = damp(this.aAir, s === 'free' && !this.grounded ? 1 : 0, 14, dt);
     this.aEat = damp(this.aEat, s === 'eat' ? 1 : 0, 9, dt);
