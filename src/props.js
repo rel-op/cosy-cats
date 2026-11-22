@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { toon, tint } from './build.js';
+import { toon, tint, TEX } from './build.js';
 
 // Reusable scenery pieces. Each takes a Builder `b` and local coordinates.
 
@@ -16,21 +16,28 @@ export const C = {
   card: '#c9a26b', cardD: '#b08a56', metal: '#8f9aa3', dark: '#3d4450',
 };
 // a clump of foliage: one big ball with smaller light and dark clusters over it
-export function leafy(b, x, y, z, r, cols, { sy = 0.9, sway = 0.5, n = 10, seg = 8 } = {}) {
+export function leafy(b, x, y, z, r, cols, { sy = 0.9, sway = 0.5, n = 10 } = {}) {
   const [mid, light, dark] = cols;
-  b.ball(x, y, z, r, mid, { sy, layer: 'sway', sway, seg: seg + 1 });
+  const v = Math.abs(Math.round(x * 3 + z * 5)) % 4;
+  b.blob(x, y, z, r, mid, { sy, layer: 'sway', sway, tex: TEX.leaf, variant: v, detail: 2, amp: 0.16 });
   for (let i = 0; i < n; i++) {
     const t = (i + 0.5) / n, phi = Math.acos(1 - 2 * t), th = i * 2.399963 + x;
     const dx = Math.sin(phi) * Math.cos(th), dy = Math.cos(phi), dz = Math.sin(phi) * Math.sin(th);
     const lit = dy * 0.75 - dx * 0.35 + dz * 0.3; // sun from the upper left
     const c = lit > 0.3 ? light : lit < -0.12 ? dark : mid;
-    b.ball(x + dx * r * 0.76, y + dy * r * 0.76 * sy, z + dz * r * 0.76, r * (0.36 + ((i * 7) % 5) * 0.03), c, { sy: 0.92, layer: 'sway', sway, seg: 6 });
+    const cr = r * (0.34 + ((i * 7) % 5) * 0.035);
+    b.blob(x + dx * r * 0.78, y + dy * r * 0.78 * sy, z + dz * r * 0.78, cr, c, { sy: 0.9, layer: 'sway', sway, tex: TEX.leaf, variant: (v + i) % 4, detail: 1, amp: 0.22 });
+    // a few stray tufts break up the outline
+    if (r > 0.9 && i % 3 === 0) b.blob(x + dx * r * 1.12, y + dy * r * 1.08 * sy, z + dz * r * 1.12, cr * 0.5, lit > 0 ? light : mid, { layer: 'sway', sway: sway * 1.3, tex: TEX.leaf, variant: i % 4, detail: 1, amp: 0.25 });
   }
 }
 
-export function house(b, { wall = C.cream, roof = C.terracotta, trim = C.white, door = null, windows = [], x0 = -12, x1 = 12, h = 5.4, base = '#dccfb2', style = 'plaster', shutters = null, boxes = [], chimney = null, pipe = null, curtains = '#e7c9a0', smokey = true } = {}) {
+export function house(b, { wall = C.cream, roof = C.terracotta, trim = C.white, door = null, windows = [], x0 = -12, x1 = 12, h = 5.4, base = '#dccfb2', style = 'plaster', shutters = null, boxes = [], chimney = null, pipe = null, curtains = '#e7c9a0', smokey = true, dormers = [], trellis = [], baskets = [] } = {}) {
+  b.tex = style === 'brick' ? TEX.brick : style === 'stone' ? TEX.stone : style === 'clapboard' ? TEX.wood : TEX.plaster;
   b.block(x0, x1, 0, h, -12.4, -11, wall, { climb: false });
+  b.tex = TEX.stone;
   b.box(x0, x1, 0, 0.42, -11.07, -10.93, base);
+  b.tex = 0;
   b.box(x0, x1, 0.42, 0.47, -11.08, -10.92, tint(base, 0.06));
   if (style === 'clapboard') {
     for (let y = 0.8; y < h - 0.2; y += 0.38) b.box(x0, x1, y, y + 0.035, -11.04, -10.975, tint(wall, -0.08));
@@ -45,13 +52,42 @@ export function house(b, { wall = C.cream, roof = C.terracotta, trim = C.white, 
     for (let i = 0; i < 9; i++) { const x = x0 + 1.5 + ((i * 7.3) % (x1 - x0 - 3)), y = 0.8 + ((i * 2.9) % (h - 1.6)); b.box(x, x + 0.9 + (i % 3) * 0.5, y, y + 0.22 + (i % 2) * 0.2, -11.02, -10.99, tint(wall, i % 2 ? -0.04 : 0.035)); }
   }
   // roof: rows of tiles stepping up and back
+  b.tex = TEX.tile;
   for (let i = 0; i < 6; i++) {
     const y = h + i * 0.36, zf = -10.5 - i * 0.55;
     b.box(x0 - 0.15, x1 + 0.15, y, y + 0.4, zf - 2.1, zf, i % 2 ? roof : tint(roof, -0.045));
     for (let x = x0 - 0.1 + (i % 2) * 0.3; x < x1; x += 0.6) b.box(x, x + 0.5, y + 0.4, y + 0.44, zf - 0.5, zf + 0.03, tint(roof, 0.05));
     b.box(x0 - 0.15, x1 + 0.15, y - 0.03, y + 0.03, zf - 0.02, zf + 0.04, tint(roof, -0.14));
   }
+  // ridge, and dormer windows poking out of the roof
+  b.box(x0 - 0.15, x1 + 0.15, h + 2.16, h + 2.4, -15.5, -14.9, tint(roof, -0.1));
+  for (const dx of dormers) {
+    b.tex = 0;
+    b.box(dx - 0.75, dx + 0.75, h + 0.55, h + 1.75, -12.4, -11.55, wall);
+    b.box(dx - 0.5, dx + 0.5, h + 0.75, h + 1.5, -11.57, -11.5, '#ffffff', { layer: 'glow' });
+    b.box(dx - 0.04, dx + 0.04, h + 0.75, h + 1.5, -11.52, -11.47, trim); b.box(dx - 0.5, dx + 0.5, h + 1.1, h + 1.16, -11.52, -11.47, trim);
+    b.box(dx - 0.6, dx + 0.6, h + 0.62, h + 0.75, -11.6, -11.45, trim);
+    b.tex = TEX.tile;
+    b.box(dx - 0.95, dx + 0.05, h + 1.72, h + 1.9, -12.6, -11.4, roof, { rot: [0, 0, 0.5] }); b.box(dx - 0.05, dx + 0.95, h + 1.72, h + 1.9, -12.6, -11.4, tint(roof, -0.05), { rot: [0, 0, -0.5] });
+  }
+  b.tex = 0;
   b.box(x0 - 0.2, x1 + 0.2, h - 0.13, h, -10.62, -10.42, trim);
+  // a trellis with a climbing rose, and hanging baskets
+  for (const [t0, t1, col] of trellis) {
+    for (let x = t0; x <= t1 + 0.01; x += 0.36) b.box(x - 0.02, x + 0.02, 0.47, 3.6, -10.98, -10.94, C.woodL);
+    for (let y = 0.8; y < 3.6; y += 0.42) b.box(t0, t1, y, y + 0.04, -10.97, -10.93, C.woodL);
+    for (let i = 0; i < 16; i++) {
+      const x = t0 + ((i * 0.37) % (t1 - t0)), y = 0.5 + ((i * 0.83) % 3.1);
+      b.blob(x, y, -10.86, 0.24, i % 2 ? C.leaf : C.leafD, { sz: 0.5, layer: 'sway', sway: 0.2, tex: TEX.leaf, variant: i % 4, detail: 1 });
+      if (i % 2 === 0) b.ball(x + 0.08, y + 0.1, -10.74, 0.08, i % 4 ? col : tint(col, 0.1), { seg: 5, layer: 'sway', sway: 0.2 });
+    }
+  }
+  for (const bx of baskets) {
+    b.box(bx - 0.03, bx + 0.03, 3.3, 3.36, -11.0, -10.45, C.dark); b.box(bx - 0.012, bx + 0.012, 2.75, 3.3, -10.5, -10.47, C.dark);
+    b.cyl(bx, 2.45, 2.75, -10.48, 0.26, 0.14, C.woodD, { seg: 8 });
+    leafy(b, bx, 2.82, -10.48, 0.3, [C.leaf, C.leafL, C.leafD], { sway: 0.5, n: 5 });
+    for (let i = 0; i < 6; i++) b.ball(bx + Math.cos(i) * 0.26, 2.72 + (i % 3) * 0.14, -10.48 + Math.sin(i) * 0.26, 0.07, [C.pink, C.white, C.purple][i % 3], { seg: 5, layer: 'sway', sway: 0.5 });
+  }
   if (pipe !== null) { b.box(pipe - 0.07, pipe + 0.07, 0, h - 0.1, -10.98, -10.84, trim); b.box(pipe - 0.1, pipe + 0.1, 1.6, 1.68, -11.0, -10.82, tint(trim, -0.12)); b.box(pipe - 0.1, pipe + 0.1, 3.6, 3.68, -11.0, -10.82, tint(trim, -0.12)); }
   if (chimney !== null) {
     b.box(chimney - 0.55, chimney + 0.55, h + 1.0, h + 3.4, -14.6, -13.5, C.brick);
@@ -67,6 +103,7 @@ export function house(b, { wall = C.cream, roof = C.terracotta, trim = C.white, 
     b.box(mx - 0.04, mx + 0.04, wy0 + 0.12, wy1 - 0.12, -10.95, -10.88, trim);
     b.box(wx0 + 0.12, wx1 - 0.12, my - 0.04, my + 0.04, -10.95, -10.88, trim);
     b.box(wx0 - 0.12, wx1 + 0.12, wy0 - 0.14, wy0 - 0.04, -11.05, -10.8, trim);
+    b.box(wx0 - 0.14, wx1 + 0.14, wy1 + 0.08, wy1 + 0.2, -11.05, -10.86, tint(trim, -0.06));
     if (curtains) { b.box(wx0 + 0.12, wx0 + 0.34, wy0 + 0.12, wy1 - 0.12, -10.93, -10.89, curtains); b.box(wx1 - 0.34, wx1 - 0.12, wy0 + 0.12, wy1 - 0.12, -10.93, -10.89, curtains); }
     if (shutters) for (const sx of [wx0 - 0.42, wx1 + 0.08]) { b.box(sx, sx + 0.34, wy0, wy1, -11.04, -10.92, shutters); for (let y = wy0 + 0.15; y < wy1 - 0.1; y += 0.22) b.box(sx + 0.04, sx + 0.3, y, y + 0.05, -10.93, -10.9, tint(shutters, -0.1)); }
     if (boxes.includes(wi)) {
@@ -206,22 +243,28 @@ export function plant(b, rand, x, z, kind, colors = [C.purple, C.pink, C.blue, C
 }
 
 // a planted strip: n plants scattered in a rectangle
-export function border(b, rand, x0, x1, z0, z1, n, kinds, colors, ok = () => true) {
+export function border(b, rand, x0, x1, z0, z1, n, kinds, colors, ok = () => true, soil = true) {
   for (let i = 0; i < n; i++) {
     const x = x0 + rand() * (x1 - x0), z = z0 + rand() * (z1 - z0);
-    if (ok(x, z)) plant(b, rand, x, z, kinds[Math.floor(rand() * kinds.length)], colors);
+    if (!ok(x, z)) continue;
+    if (soil) b.disc(x, 0.012 + (i % 5) * 0.0005, z, 0.36 + rand() * 0.16, i % 2 ? '#6b4a36' : '#765240', { seg: 7, layer: 'ground' });
+    {
+      plant(b, rand, x, z, kinds[Math.floor(rand() * kinds.length)], colors);
+    }
   }
 }
 
 export function tufts(b, rand, n, x0, x1, z0, z1, ok = () => true) {
-  const greens = ['#9fcb5c', '#b4d86c', '#8dbd50', '#c3e07a', '#7fb048'];
+  const greens = ['#9fcb5c', '#b0d66a', '#8dbd50', '#bcdc74', '#84b54a'];
   for (let i = 0; i < n * 6; i++) {
     const x = x0 + rand() * (x1 - x0), z = z0 + rand() * (z1 - z0);
     if (!ok(x, z)) continue;
-    const h = 0.08 + rand() * 0.1, col = greens[i % 5];
-    b.cone(x, 0, h, z, 0.05, col, { seg: 3, layer: 'grass', sway: 0.45 });
-    b.cone(x + 0.07, 0, h * 0.75, z + 0.05, 0.045, greens[(i + 2) % 5], { seg: 3, layer: 'grass', sway: 0.45 });
-    if (i % 3 === 0) b.cone(x - 0.06, 0, h * 0.9, z + 0.06, 0.045, col, { seg: 3, layer: 'grass', sway: 0.45 });
+    const h = 0.09 + rand() * 0.12, col = greens[i % 5], o = { seg: 3, layer: 'grass', sway: 0.45, up: true };
+    b.cone(x, 0, h, z, 0.05, col, o);
+    b.cone(x + 0.07, 0, h * 0.75, z + 0.05, 0.045, greens[(i + 2) % 5], o);
+    if (i % 3 === 0) b.cone(x - 0.06, 0, h * 0.9, z + 0.06, 0.045, col, o);
+    // now and then a thicker clump of longer grass
+    if (i % 13 === 0) for (let k = 0; k < 6; k++) b.cone(x + 0.3 + (rand() - 0.5) * 0.3, 0, 0.16 + rand() * 0.14, z + (rand() - 0.5) * 0.3, 0.05, greens[(i + k) % 5], { ...o, sway: 0.8 });
     if (i % 19 === 0) { b.ball(x + 0.15, 0.07, z - 0.1, 0.05, i % 38 ? C.white : C.yellow, { sy: 0.6, layer: 'grass', sway: 0.3, seg: 5 }); b.ball(x + 0.15, 0.09, z - 0.1, 0.022, C.yellow, { layer: 'grass', sway: 0.3, seg: 4 }); }
     if (i % 31 === 0) b.disc(x, 0.012, z, 0.18 + rand() * 0.16, i % 62 ? '#74a240' : '#a4cb62', { seg: 6, layer: 'ground' });
   }
@@ -278,6 +321,7 @@ export function pathLight(b, x, z) {
 export function pot(b, x, z, { y = 0, r = 0.24, plant: leaf = C.leaf, bloom = null, solid = true } = {}) {
   b.cyl(x, y, y + r * 1.6, z, r, r * 0.75, C.terracotta, { seg: 8 });
   b.cyl(x, y + r * 1.45, y + r * 1.65, z, r * 1.1, r * 1.1, tint(C.terracotta, 0.05), { seg: 8 });
+  b.cyl(x, y, y + 0.04, z, r * 1.05, r * 1.05, tint(C.terracotta, -0.08), { seg: 8 });
   leafy(b, x, y + r * 2.5, z, r * 1.15, [leaf, tint(leaf, 0.07), tint(leaf, -0.07)], { sway: 0.2, n: 5 });
   if (bloom) for (let i = 0; i < 5; i++) b.ball(x + Math.cos(i * 1.4) * r * 0.9, y + r * (2.9 + (i % 2) * 0.5), z + Math.sin(i * 1.4) * r * 0.9, r * 0.32, bloom, { seg: 5, layer: 'sway', sway: 0.2 });
   if (solid) b.solid(x - r * 0.8, x + r * 0.8, y, y + r * 1.6, z - r * 0.8, z + r * 0.8, { climb: false });
@@ -298,6 +342,8 @@ export function boundary(b, x, z0, z1, kind, { h = 1.4, gaps = [] } = {}) {
       b.solid(x - t, x + t, 0, h, a, c);
       for (let p = a; p < c - 0.05; p += 0.5) b.box(x - t + 0.02, x + t - 0.02, 0, h - (Math.round(p * 2) % 3 === 0 ? 0.06 : 0), p + 0.02, Math.min(p + 0.48, c), Math.round(p * 2) % 2 ? C.plank : C.wood);
       b.box(x + t - 0.02, x + t + 0.05, h * 0.68, h * 0.68 + 0.12, a, c, C.woodD);
+      b.box(x + t - 0.02, x + t + 0.05, h * 0.22, h * 0.22 + 0.12, a, c, C.woodD);
+      for (let p = a; p <= c + 0.01; p += 2.5) { const pz = Math.min(p, c - 0.12); b.box(x - t - 0.03, x + t + 0.07, 0, h + 0.03, pz, pz + 0.16, C.woodD); b.box(x - t - 0.06, x + t + 0.1, h + 0.03, h + 0.09, pz - 0.03, pz + 0.19, C.woodL); }
     } else if (kind === 'brick') {
       b.block(x - 0.2, x + 0.2, 0, h, a, c, C.brick);
       for (let p = a; p < c; p += 1.1) b.box(x - 0.21, x + 0.21, 0.3 + (Math.round(p) % 2) * 0.3, 0.42 + (Math.round(p) % 2) * 0.3, p + 0.1, Math.min(p + 0.7, c), C.brickD);
@@ -330,7 +376,8 @@ export function frontWall(b, z, x0, x1, kind, { h = 0.5, gaps = [] } = {}) {
   for (const [a, c] of segs) {
     if (kind === 'picket') {
       b.solid(a, c, 0, h + 0.3, z - 0.08, z + 0.08);
-      for (let p = a + 0.1; p < c; p += 0.3) b.box(p, p + 0.16, 0, h + 0.3 - (Math.round(p * 10) % 2) * 0.04, z - 0.04, z + 0.04, C.white);
+      for (let p = a + 0.1; p < c; p += 0.3) { const ph = h + 0.22 - (Math.round(p * 10) % 2) * 0.04; b.box(p, p + 0.16, 0, ph, z - 0.04, z + 0.04, C.white); b.cone(p + 0.08, ph, ph + 0.12, z, 0.1, C.white, { seg: 4 }); }
+      b.box(a, c, h * 0.5 + 0.3, h * 0.5 + 0.38, z - 0.07, z - 0.03, C.stoneL);
       b.box(a, c, h * 0.5, h * 0.5 + 0.08, z - 0.07, z - 0.03, C.stoneL);
     } else if (kind === 'stone') {
       b.block(a, c, 0, h, z - 0.2, z + 0.2, C.stone);
@@ -349,7 +396,10 @@ export function frontWall(b, z, x0, x1, kind, { h = 0.5, gaps = [] } = {}) {
 }
 
 export function steppingStones(b, pts) {
-  pts.forEach(([x, z], i) => b.cyl(x, 0, 0.04, z, 0.42 + (i % 3) * 0.05, 0.48 + (i % 3) * 0.05, i % 2 ? C.stone : C.stoneL, { seg: 9 }));
+  pts.forEach(([x, z], i) => {
+    b.disc(x, 0.011, z, 0.62 + (i % 3) * 0.05, '#6f8f3c', { seg: 9, layer: 'ground' });
+    b.blob(x, 0.0, z, 0.5 + (i % 3) * 0.05, i % 2 ? C.stone : C.stoneL, { sy: 0.09, tex: TEX.stone, variant: i % 4, detail: 1, amp: 0.12, facet: true });
+  });
 }
 
 export function lampPost(b, x, z, h = 2.6) {
@@ -359,10 +409,11 @@ export function lampPost(b, x, z, h = 2.6) {
 }
 
 export function rock(b, x, z, r, color = C.stone) {
-  b.ball(x, r * 0.3, z, r, color, { sy: 0.65, seg: 7 });
+  const v = Math.abs(Math.round(x * 7 + z * 3)) % 4;
+  b.blob(x, r * 0.28, z, r, color, { sy: 0.66, tex: TEX.stone, variant: v, detail: 1, amp: 0.24, facet: true });
+  if (r > 0.3) b.blob(x - r * 0.1, r * 0.5, z - r * 0.1, r * 0.5, C.moss, { sy: 0.25, tex: TEX.leaf, variant: v, detail: 1, amp: 0.2 });
 }
 
-// things a cat can carry
 export function makeItem(name) {
   const g = new THREE.Group();
   const sph = new THREE.SphereGeometry(1, 10, 7);

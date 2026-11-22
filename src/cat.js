@@ -15,15 +15,15 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const W = '#f6f1e4';
 export const COATS = [
   { id: 'ginger', name: 'ginger tabby', fur: '#e0903f', stripe: '#b9652a', chest: W, muzzle: W, paws: W, tail2: '#b9652a' },
-  { id: 'grey', name: 'grey tabby', fur: '#9a9c9e', stripe: '#5f6468', chest: '#e9e6dc', muzzle: '#e9e6dc', paws: '#e9e6dc', tail2: '#5f6468' },
+  { id: 'grey', name: 'grey tabby', eye: '#9fc46a', fur: '#9a9c9e', stripe: '#5f6468', chest: '#e9e6dc', muzzle: '#e9e6dc', paws: '#e9e6dc', tail2: '#5f6468' },
   { id: 'brown', name: 'brown tabby', fur: '#9b7450', stripe: '#5a3f2b', chest: '#e7d5b3', muzzle: '#e7d5b3', paws: '#9b7450', tail2: '#5a3f2b' },
-  { id: 'black', name: 'black', fur: '#3b3a44', stripe: null, chest: '#3b3a44', muzzle: '#4a4954', paws: '#3b3a44', tail2: '#3b3a44' },
-  { id: 'white', name: 'white', fur: '#f3efe6', stripe: null, chest: '#ffffff', muzzle: '#ffffff', paws: '#ffffff', tail2: '#f3efe6' },
-  { id: 'tuxedo', name: 'tuxedo', fur: '#3b3a44', stripe: null, chest: W, muzzle: W, paws: W, tail2: '#3b3a44', tip: W },
-  { id: 'calico', name: 'calico', fur: '#f3efe6', stripe: null, chest: '#ffffff', muzzle: '#ffffff', paws: '#ffffff', tail2: '#d98a3d', patches: ['#d98a3d', '#3b3a44', '#d98a3d', '#3b3a44'], ears: '#d98a3d' },
+  { id: 'black', name: 'black', eye: '#f0d24a', fur: '#3b3a44', stripe: null, chest: '#3b3a44', muzzle: '#4a4954', paws: '#3b3a44', tail2: '#3b3a44' },
+  { id: 'white', name: 'white', eye: '#7fc4e8', fur: '#f3efe6', stripe: null, chest: '#ffffff', muzzle: '#ffffff', paws: '#ffffff', tail2: '#f3efe6' },
+  { id: 'tuxedo', name: 'tuxedo', eye: '#9fc46a', fur: '#3b3a44', stripe: null, chest: W, muzzle: W, paws: W, tail2: '#3b3a44', tip: W },
+  { id: 'calico', name: 'calico', eye: '#9fc46a', fur: '#f3efe6', stripe: null, chest: '#ffffff', muzzle: '#ffffff', paws: '#ffffff', tail2: '#d98a3d', patches: ['#d98a3d', '#3b3a44', '#d98a3d', '#3b3a44'], ears: '#d98a3d' },
   { id: 'tortie', name: 'tortoiseshell', fur: '#3f3a3c', stripe: null, chest: '#3f3a3c', muzzle: '#c9853f', paws: '#3f3a3c', tail2: '#b87333', patches: ['#b87333', '#d9a05b', '#b87333', '#d9a05b'] },
-  { id: 'siamese', name: 'siamese', fur: '#ecdfc6', stripe: null, chest: '#f4ecda', muzzle: '#5d4a42', paws: '#5d4a42', tail2: '#5d4a42', points: '#5d4a42' },
-  { id: 'blue', name: 'smoky blue', fur: '#7d8a99', stripe: null, chest: '#7d8a99', muzzle: '#93a0ae', paws: '#7d8a99', tail2: '#7d8a99' },
+  { id: 'siamese', name: 'siamese', eye: '#6fb4e8', fur: '#ecdfc6', stripe: null, chest: '#f4ecda', muzzle: '#5d4a42', paws: '#5d4a42', tail2: '#5d4a42', points: '#5d4a42' },
+  { id: 'blue', name: 'smoky blue', eye: '#f0b84a', fur: '#7d8a99', stripe: null, chest: '#7d8a99', muzzle: '#93a0ae', paws: '#7d8a99', tail2: '#7d8a99' },
   { id: 'cream', name: 'cream', fur: '#f0d9ae', stripe: '#dcbb86', chest: W, muzzle: W, paws: W, tail2: '#dcbb86' },
   { id: 'cow', name: 'black and white', fur: '#f3efe6', stripe: null, chest: '#ffffff', muzzle: '#ffffff', paws: '#ffffff', tail2: '#3b3a44', patches: ['#3b3a44', '#3b3a44', '#3b3a44', '#3b3a44'], ears: '#3b3a44' },
 ];
@@ -104,7 +104,7 @@ export class Cat {
       ears: toon('#fff'), tailA: toon('#fff'), tailB: toon('#fff'), tip: toon('#fff'), legs: toon('#fff'),
       patch: [toon('#fff'), toon('#fff'), toon('#fff'), toon('#fff')],
       pink: toon('#e58f9d'),
-      eye: toon('#2a2731'),
+      eye: toon('#2a2731'), iris: toon('#e8c170'), whisker: new THREE.MeshBasicMaterial({ color: '#fffaf0' }),
       shine: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
     });
 
@@ -129,6 +129,13 @@ export class Cat {
 
     this.torso = add(body, sphere, m.fur, 0, bodyY, 0, 0.2, 0.2, L);
     add(body, sphere, m.chest, 0, bodyY - 0.05, L - 0.13, 0.13, 0.13, 0.11);
+    // haunches, shoulders and a ruff at the neck give her a proper cat outline
+    for (const sx of [-1, 1]) {
+      add(body, sphere, m.fur, sx * 0.125, bodyY - 0.03, -L + 0.17, 0.125, 0.155, 0.17);
+      add(body, sphere, m.fur, sx * 0.11, bodyY - 0.01, L - 0.2, 0.1, 0.125, 0.13);
+    }
+    add(body, sphere, m.fur, 0, bodyY + 0.07, L - 0.12, 0.15, 0.14, 0.14);
+    add(body, sphere, m.chest, 0, bodyY - 0.11, L - 0.2, 0.1, 0.07, 0.1);
     this.stripes = [];
     for (const f of [-0.5, 0, 0.5]) {
       const z = f * L;
@@ -151,6 +158,16 @@ export class Cat {
     this.headBase = head.position.clone();
     const hc = new THREE.Vector3(0, 0.07 * hs, 0.11 * hs);
     add(head, sphere, m.fur, hc.x, hc.y, hc.z, 0.2 * hs, 0.185 * hs, 0.185 * hs);
+    // cheek fluff and whiskers
+    const whisker = new THREE.BoxGeometry(0.17 * hs, 0.008, 0.008);
+    for (const sx of [-1, 1]) {
+      add(head, sphere, m.fur, hc.x + sx * 0.145 * hs, hc.y - 0.045 * hs, hc.z + 0.05 * hs, 0.085 * hs, 0.075 * hs, 0.08 * hs);
+      for (const tilt of [0.22, -0.12]) {
+        const w = add(head, whisker, m.whisker, hc.x + sx * 0.19 * hs, hc.y - 0.05 * hs + tilt * 0.08, hc.z + 0.13 * hs);
+        w.rotation.set(0, sx * 0.35, sx * tilt);
+        w.castShadow = false;
+      }
+    }
     this.patches.push(add(head, sphere, m.patch[3], hc.x - 0.07 * hs, hc.y + 0.07 * hs, hc.z + 0.02 * hs, 0.13 * hs, 0.12 * hs, 0.14 * hs));
     const earGeo = new THREE.ConeGeometry(0.08 * hs, 0.16 * hs, 8);
     const innerGeo = new THREE.ConeGeometry(0.045 * hs, 0.1 * hs, 6);
@@ -166,7 +183,8 @@ export class Cat {
       const eye = new THREE.Group();
       eye.position.set(hc.x + s * 0.08 * hs, hc.y + 0.02 * hs, hc.z + 0.16 * hs);
       head.add(eye);
-      add(eye, sphere, m.eye, 0, 0, 0, er);
+      add(eye, sphere, m.iris, 0, 0, -er * 0.25, er * 1.22);
+      add(eye, sphere, m.eye, 0, 0, 0, er * 0.86);
       add(eye, sphere, m.shine, er * 0.35, er * 0.4, er * 0.75, er * 0.36);
       this.eyes.push(eye);
     }
@@ -185,6 +203,11 @@ export class Cat {
       body.add(leg);
       add(leg, legGeo, m.legs, 0, -hipY / 2, 0);
       add(leg, sphere, m.paws, 0, -hipY + 0.045, 0.015, 0.064, 0.048, 0.078);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.014, 4, 10), m.stripe);
+      band.rotation.x = Math.PI / 2;
+      band.position.y = -hipY * 0.45;
+      leg.add(band);
+      this.stripes.push(band);
       this.legs.push(leg);
     }
 
@@ -240,6 +263,7 @@ export class Cat {
     m.stripe.color.set(coat.stripe || coat.fur);
     for (const s of this.stripes) s.visible = !!coat.stripe;
     m.chest.color.set(coat.chest);
+    m.iris.color.set(coat.eye || '#e8c170');
     m.muzzle.color.set(coat.muzzle);
     m.paws.color.set(coat.paws);
     m.legs.color.set(pts || coat.fur);

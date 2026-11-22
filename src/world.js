@@ -230,7 +230,7 @@ function home(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-1, 7, -11, -6.5]])(x, z) && pondExcl([[6.2, 5.6, 1.9, 1.6]])(x, z);
   P.patches(b, rand, 12, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 210, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { door: { x: 2.7, color: C.teal, flap: true, y: 0.12, porch: C.terracotta }, windows: [[-5.2, -2.8, 1.1, 3.1], [5.5, 7.5, 1.5, 3.1], [-9.6, -7.8, 1.5, 3.1]], shutters: '#6fa3a0', boxes: [1, 2], chimney: 8.5, pipe: -1.6, curtains: '#f2c9a0' });
+  P.house(b, { door: { x: 2.7, color: C.teal, flap: true, y: 0.12, porch: C.terracotta }, windows: [[-5.2, -2.8, 1.1, 3.1], [5.5, 7.5, 1.5, 3.1], [-9.6, -7.8, 1.5, 3.1]], shutters: '#6fa3a0', boxes: [1, 2], chimney: 8.5, pipe: -1.6, curtains: '#f2c9a0', dormers: [-6.4, 6.5], trellis: [[8.7, 10.7, C.pink]], baskets: [0.6, 4.6] });
   // patio
   b.solid(-1, 7, 0, 0.12, -11, -6.5, { climb: false });
   for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) b.box(-1 + i * 2 + 0.04, 1 + i * 2 - 0.04, 0, 0.12, -11 + j * 1.5 + 0.04, -9.5 + j * 1.5 - 0.04, [C.stoneL, C.stone, '#d3cdbf'][(i + j * 2) % 3]);
@@ -260,7 +260,8 @@ function home(W, b, rand, out) {
   b.block(-11.85, -9.3, 1.7, 1.85, -4.6, -1.0, C.slate);
   b.block(-9.5, -9.3, 0, 1.85, -1.2, -1.0, C.woodD);
   b.block(-11.85, -9.3, 0, 1.85, -4.6, -4.45, C.wood);
-  b.ball(-10.6, 0, -2.7, 1.0, C.hay, { sy: 0.22 }); b.ball(-10.1, 0, -3.5, 0.6, tint(C.hay, -0.06), { sy: 0.3 });
+  b.blob(-10.6, 0, -2.7, 1.05, C.hay, { sy: 0.24, variant: 1, detail: 2, amp: 0.2, facet: true }); b.blob(-10.1, 0, -3.5, 0.65, tint(C.hay, -0.06), { sy: 0.32, variant: 2, detail: 1, amp: 0.25, facet: true }); b.blob(-11.0, 0, -1.9, 0.5, tint(C.hay, 0.04), { sy: 0.3, variant: 3, detail: 1, amp: 0.25, facet: true });
+  for (let i = 0; i < 14; i++) { const sx = -11.5 + rand() * 2.0, sz = -4.0 + rand() * 2.6; b.box(sx, sx + 0.3, 0.01, 0.03, sz, sz + 0.03, i % 2 ? C.hay : tint(C.hay, 0.06), { rot: [0, rand() * 3, 0] }); }
   for (let i = 0; i < 5; i++) { const lx = -11.3 + (i % 3) * 0.42 + Math.floor(i / 3) * 0.21, ly = 0.2 + Math.floor(i / 3) * 0.36; b.lying(lx, ly, -4.1, 0.6, 0.2, C.bark, 'z', { seg: 7 }); b.lying(lx, ly, -3.79, 0.02, 0.15, C.woodL, 'z', { seg: 7 }); }
   W.addBed('hay', 'outside', b.p(-10.6, 0, -2.7), 0.95);
   pond(W, b, 6.2, 5.6, 1.9, 1.6);
@@ -314,7 +315,7 @@ function treehouseGarden(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-8.2, -3.8, -7.2, -2.8], [-4, 0.2, 5, 8], [6.2, 8.8, 4.2, 6.8]])(x, z) && pondExcl([[8, -5.5, 1.5, 1.5]])(x, z);
   P.patches(b, rand, 12, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 200, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: '#cfdde2', roof: C.slateD, style: 'clapboard', door: { x: -6.5, color: C.red, porch: C.white }, windows: [[-10.5, -8.6, 1.3, 3.0], [-3.5, -1.2, 1.3, 3.0], [6.5, 9.5, 1.3, 3.0]], shutters: C.navy, boxes: [0, 2], chimney: -1.5, pipe: 4.4, curtains: '#f6e7a8' });
+  P.house(b, { wall: '#cfdde2', roof: C.slateD, style: 'clapboard', door: { x: -6.5, color: C.red, porch: C.white }, windows: [[-10.5, -8.6, 1.3, 3.0], [-3.5, -1.2, 1.3, 3.0], [6.5, 9.5, 1.3, 3.0]], shutters: C.navy, boxes: [0, 2], chimney: -1.5, pipe: 4.4, curtains: '#f6e7a8', dormers: [-5, 4], trellis: [[0.6, 2.8, C.red]], baskets: [-8.0, -5.0] });
   // the oak and its treehouse: climb the trunk from the near side
   b.solid(1.4, 2.6, 0, 3.2, -1.6, -0.4);
   b.cyl(2, 0, 3.2, -1, 0.62, 0.8, C.bark, { seg: 9 });
@@ -410,7 +411,7 @@ function pondGarden(W, b, rand, out) {
   const ok = (x, z) => rectExcl([[-11.6, -5.3, -4.6, 1.6], [3.6, 8.4, 5.4, 9.6]])(x, z) && pondExcl([[0.5, 2.2, 4.6, 3.1]])(x, z);
   P.patches(b, rand, 10, -11, 11, -10, 10.5, ok, [C.moss, C.grassD]);
   P.tufts(b, rand, 150, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: '#e9e2d2', roof: '#4f5d68', trim: C.barkD, base: C.stoneD, style: 'timber', windows: [[-9, -6.4, 1.2, 3.2], [-1.3, 1.3, 0.6, 3.2], [6.3, 8.8, 1.2, 3.2]], curtains: '#f6f1e4' });
+  P.house(b, { wall: '#e9e2d2', roof: '#4f5d68', trim: C.barkD, base: C.stoneD, style: 'timber', windows: [[-9, -6.4, 1.2, 3.2], [-1.3, 1.3, 0.6, 3.2], [6.3, 8.8, 1.2, 3.2]], curtains: '#f6f1e4', dormers: [0] });
   pond(W, b, 0.5, 2.2, 4.6, 3.1, { lilies: 7, rim: C.stoneD });
   // arched bridge
   [0.16, 0.34, 0.5, 0.58, 0.5, 0.34, 0.16].forEach((h, i) => {
@@ -474,7 +475,7 @@ function vegGarden(W, b, rand, out) {
   const ok = rectExcl([[-2.4, 2.4, -5.4, 4.4], [-11.8, -6.2, -6.8, -0.8], [-8, -4, -11, -9.4]]);
   P.patches(b, rand, 11, -11, 11, -10, 10.5, ok);
   P.tufts(b, rand, 190, -11.5, 11.5, -10.5, 11, ok);
-  P.house(b, { wall: C.brick, roof: C.slateD, base: C.brickD, style: 'brick', door: { x: -6, color: '#5f8a5a', y: 0.2, porch: C.slateD }, windows: [[-1.5, 0.8, 1.4, 3.1], [5, 8, 1.4, 3.1]], shutters: C.white, boxes: [0, 1], chimney: 9.6, pipe: -9.4 });
+  P.house(b, { wall: C.brick, roof: C.slateD, base: C.brickD, style: 'brick', door: { x: -6, color: '#5f8a5a', y: 0.2, porch: C.slateD }, windows: [[-1.5, 0.8, 1.4, 3.1], [5, 8, 1.4, 3.1]], shutters: C.white, boxes: [0, 1], chimney: 9.6, pipe: -9.4, dormers: [-3, 6.5], trellis: [[1.8, 4.0, C.yellow]], baskets: [-7.8] });
   b.block(-7.2, -4.8, 0, 0.2, -11, -9.8, C.stone, { climb: false });
   W.addBowl('food', 'outside', b.p(-4.1, 0, -10.2));
   W.addBowl('water', 'outside', b.p(-3.5, 0, -10.4));
@@ -547,7 +548,7 @@ function wildGarden(W, b, rand, out) {
       b.cone(x, 0, 0.5 + rand() * 0.45, z, 0.09, ['#8fb04c', '#a5c05a', '#7da243', '#b9c56a'][i % 4], { seg: 4, layer: 'sway', sway: 1.4 });
     }
   }
-  P.house(b, { wall: '#b9c0ae', roof: '#7d8a6a', base: '#9aa392', style: 'stone', door: { x: 4, color: '#7a6a5a' }, windows: [[-3, -0.5, 1.4, 3.0], [7.5, 9.8, 1.4, 3.0]], curtains: null, chimney: -8.5, smokey: false, pipe: 11.2 });
+  P.house(b, { wall: '#b9c0ae', roof: '#7d8a6a', base: '#9aa392', style: 'stone', door: { x: 4, color: '#7a6a5a' }, windows: [[-3, -0.5, 1.4, 3.0], [7.5, 9.8, 1.4, 3.0]], curtains: null, chimney: -8.5, smokey: false, pipe: 11.2, dormers: [3.5] });
   for (let i = 0; i < 16; i++) b.ball(-11 + rand() * 7, 0.5 + rand() * 3.4, -10.9, 0.45 + rand() * 0.35, i % 2 ? C.leafD : C.leaf, { sz: 0.3, layer: 'sway', sway: 0.15, seg: 6 });
   b.box(7.4, 9.9, 1.9, 2.1, -10.92, -10.86, C.woodD, { rot: [0, 0, 0.12] }); b.box(7.4, 9.9, 2.5, 2.7, -10.92, -10.86, C.wood, { rot: [0, 0, -0.1] });
   // potting shed

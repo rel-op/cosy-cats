@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Builder, tint, toon } from './build.js';
+import { Builder, tint, toon, TEX } from './build.js';
 import { C } from './props.js';
 
 // Interiors: small cutaway rooms seen from the same angle as the gardens.
@@ -24,8 +24,8 @@ export function buildRooms(W, scene) {
     };
     b.box(0, w, -0.5, 0, 0, d, floor);
     b.box(0, w, -0.5, -0.12, 0, d + 0.02, tint(floor, -0.14));
-    b.block(-0.35, 0, -0.5, h, -0.35, d, wall, { climb: false });
-    b.block(0, w, -0.5, h, -0.35, 0, wall2, { climb: false });
+    b.block(-0.35, 0, -0.5, h, -0.35, d, wall, { climb: false, tex: TEX.plaster });
+    b.block(0, w, -0.5, h, -0.35, 0, wall2, { climb: false, tex: TEX.plaster });
     b.box(-0.36, 0.0, h, h + 0.04, -0.36, d, cap);
     b.box(0, w, h, h + 0.04, -0.36, 0.0, cap);
     b.id = id;
@@ -54,10 +54,10 @@ export function buildRooms(W, scene) {
     b.dyn(l, x, y, z);
     return l;
   };
-  const planksFloor = (b, w, d, a, c2, step = 0.6) => { for (let z = 0, i = 0; z < d; z += step, i++) b.box(0, w, 0, 0.012, z + 0.02, Math.min(z + step, d), i % 2 ? a : c2); };
+  const planksFloor = (b, w, d, a, c2, step = 0.6) => { for (let z = 0, i = 0; z < d; z += step, i++) b.box(0, w, 0, 0.012, z + 0.02, Math.min(z + step, d), i % 2 ? a : c2, { tex: TEX.wood }); };
   const planksWall = (b, side, len, h, a, c2, step = 0.5) => {
     for (let p = 0, i = 0; p < len; p += step, i++) {
-      if (side === 'L') b.box(0, 0.02, 0, h, p + 0.02, Math.min(p + step, len), i % 2 ? a : c2); else b.box(p + 0.02, Math.min(p + step, len), 0, h, 0, 0.02, i % 2 ? a : c2);
+      if (side === 'L') b.box(0, 0.02, 0, h, p + 0.02, Math.min(p + step, len), i % 2 ? a : c2, { tex: TEX.wood }); else b.box(p + 0.02, Math.min(p + step, len), 0, h, 0, 0.02, i % 2 ? a : c2, { tex: TEX.wood });
     }
   };
 
@@ -155,7 +155,7 @@ export function buildRooms(W, scene) {
     for (const [x, z, r] of [[4.6, 3.5, 0.6], [5.2, 3.9, 0.55], [4.9, 3.6, 0.5]]) b.ball(x, r * 0.5 + (r < 0.52 ? 0.5 : 0), z, r, r < 0.52 ? '#cdbb93' : '#d9c9a3', { sy: 0.62, seg: 8 });
     b.solid(4.0, 5.7, 0, 0.4, 2.9, 4.5, { climb: false });
     W.addBed('sacks', 'shed', b.p(4.8, 0.4, 3.65), 0.95);
-    b.cyl(1.4, 0, 0.42, 3.9, 0.26, 0.22, '#6d9a8a', { seg: 8 }); b.beam([1.6, 0.3, 3.9], [2.05, 0.5, 3.9], 0.04, '#6d9a8a');
+    b.cyl(2.3, 0, 0.42, 4.55, 0.26, 0.22, '#6d9a8a', { seg: 8 }); b.beam([2.5, 0.3, 4.55], [2.95, 0.5, 4.55], 0.04, '#6d9a8a');
     b.block(0.4, 1.3, 0, 0.5, 1.8, 2.5, C.card);
     b.box(2.95, 3.05, 2.2, 2.8, 2.4, 2.5, C.dark); b.box(2.82, 3.18, 1.9, 2.25, 2.3, 2.6, '#ffd98a', { layer: 'lit' });
     lamp(b, 3.0, 1.8, 2.45, '#ffb860', 12, 8);
