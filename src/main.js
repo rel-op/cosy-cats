@@ -536,7 +536,7 @@ function updateCamera(dt) {
     if (focus.length === 2) {
       const dx = focus[1].pos.x - focus[0].pos.x, dz = focus[1].pos.z - focus[0].pos.z, dy = focus[1].pos.y - focus[0].pos.y;
       const needR = Math.abs(dx * RIGHT.x + dz * RIGHT.z) + 6, needU = Math.abs(dx * AWAY.x + dz * AWAY.z) * 0.5 + Math.abs(dy) * 0.87 + 5;
-      ppu = Math.max(14, Math.min(base, pixel.view.x / needR, pixel.view.y / needU));
+      ppu = Math.max(18, Math.min(base, pixel.view.x / needR, pixel.view.y / needU));
     }
     if (menu.open) { want.copy(mama.pos); want.y += 0.4; want.addScaledVector(RIGHT, -1.6); ppu = base * 1.5; }
     else if (sleep.active) ppu *= 0.86;
@@ -671,7 +671,7 @@ function step(dt) {
         const [a, b] = hs.map((p) => p.cat);
         const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
         const r = Math.abs(dx * RIGHT.x + dz * RIGHT.z), u = Math.abs(dx * AWAY.x + dz * AWAY.z);
-        if (r > pixel.view.x / 14 - 6.5 || u > (pixel.view.y / 14 - 5.5) * 2) {
+        if (r > pixel.view.x / 18 - 6.5 || u > (pixel.view.y / 18 - 5.5) * 2) {
           for (const [c, x, z] of prev) {
             const o = c === a ? b : a;
             if (c.state !== 'ride' && Math.hypot(c.pos.x - o.pos.x, c.pos.z - o.pos.z) > Math.hypot(x - o.pos.x, z - o.pos.z)) { c.pos.x = x; c.pos.z = z; }

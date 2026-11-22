@@ -82,5 +82,5 @@ console.log(`${mix.length} audio layers`);
 const graph = filters.join(';') + `;${mix.join('')}amix=inputs=${mix.length}:normalize=0:dropout_transition=0,alimiter=limit=0.95[out]`;
 fs.writeFileSync(path.join(out, 'graph.txt'), graph);
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...inputs, '-/filter_complex', path.join(out, 'graph.txt'), '-map', '[out]', '-t', String(log.total), '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', path.join(out, 'sound.m4a')], { stdio: 'inherit' });
-execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(fps), '-i', path.join(frames, 'f%05d.jpg'), '-i', path.join(out, 'sound.m4a'), '-c:v', 'libx264', '-preset', 'slow', '-tune', 'animation', '-crf', '21', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-shortest', '-movflags', '+faststart', path.resolve('trailer.mp4')], { stdio: 'inherit' });
+execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(fps), '-i', path.join(frames, 'f%05d.jpg'), '-i', path.join(out, 'sound.m4a'), '-c:v', 'libx264', '-preset', 'slow', '-tune', 'animation', '-crf', '25', '-pix_fmt', 'yuv420p', '-c:a', 'copy', '-shortest', '-movflags', '+faststart', path.resolve('trailer.mp4')], { stdio: 'inherit' });
 console.log('wrote trailer.mp4');
