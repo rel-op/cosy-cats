@@ -42,7 +42,7 @@ export class DayNight {
   set(t) { this.t = Math.max(0, Math.min(1, t)); }
 
   // call every frame with the current region and the point the camera is looking at
-  apply(region, focus) {
+  apply(region, focus, rain = 0) {
     const t = this.t;
     let i = 0;
     while (i < KEYS.length - 2 && t > KEYS[i + 1].t) i++;
@@ -59,7 +59,7 @@ export class DayNight {
     this.sun.target.position.set(fx, 0, fz);
     if (!region.indoor) {
       this.sun.color.copy(a.sun).lerp(b.sun, f);
-      this.sun.intensity = a.sunI + (b.sunI - a.sunI) * f;
+      this.sun.intensity = (a.sunI + (b.sunI - a.sunI) * f) * (1 - 0.45 * rain);
       this.dir.copy(a.pos).lerp(b.pos, f).normalize();
       this.hemi.color.copy(a.sky).lerp(b.sky, f);
       this.hemi.groundColor.copy(a.gnd).lerp(b.gnd, f);
@@ -68,8 +68,8 @@ export class DayNight {
       u.uSkyBot.value.copy(a.bot).lerp(b.bot, f);
       u.uIndoor.value = 0;
       u.uNight.value = n;
-      u.uWarm.value = (a.warm + (b.warm - a.warm) * f) * 0.5;
-      shared.uCloud.value = 1 - n * 0.7;
+      u.uWarm.value = (a.warm + (b.warm - a.warm) * f) * 0.5 * (1 - rain);
+      shared.uCloud.value = (1 - n * 0.7) * (1 - rain);
       shared.uDay.value = 1 - n;
     } else {
       const L = region.light;

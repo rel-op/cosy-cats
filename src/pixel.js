@@ -29,6 +29,7 @@ uniform vec2 uScroll;
 uniform float uIndoor;
 uniform float uLevels;
 uniform float uWarm;
+uniform float uRain;
 varying vec2 vUv;
 
 float D(vec2 o) { return texture2D(tDepth, vUv + o / uRes).x * uRange; }
@@ -107,6 +108,17 @@ void main() {
   bloom += (bright(vec2(3.0, 3.0)) + bright(vec2(-3.0, 3.0)) + bright(vec2(3.0, -3.0)) + bright(vec2(-3.0, -3.0))) * 0.8;
   bloom += (bright(vec2(6.0, 0.0)) + bright(vec2(-6.0, 0.0)) + bright(vec2(0.0, 5.0)) + bright(vec2(0.0, -5.0))) * 0.5;
   col += bloom * (0.05 + 0.08 * uNight) * (1.0 - 0.5 * uIndoor);
+  // rain: slanted streaks over a slightly greyer, cooler world
+  if (uRain > 0.0 && uIndoor < 0.5) {
+    float l0 = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(col, mix(vec3(l0), col, 0.72) * vec3(0.86, 0.92, 1.0), uRain * 0.8);
+    float cx = floor(px.x + px.y * 0.3);
+    float lane = hash(vec2(cx, 7.0));
+    float cell = floor((px.y + uTime * (150.0 + lane * 90.0) + lane * 300.0) / 22.0);
+    float drop = step(1.0 - 0.05 * uRain, hash(vec2(cx, cell)));
+    float along = fract((px.y + uTime * (150.0 + lane * 90.0) + lane * 300.0) / 22.0);
+    col += vec3(0.55, 0.62, 0.7) * drop * step(along, 0.42) * 0.42;
+  }
   // grade: cool shadows, warm highlights, a little more colour and contrast
   float l = dot(col, vec3(0.299, 0.587, 0.114));
   col = mix(col * vec3(0.93, 0.96, 1.08), col * vec3(1.06, 1.01, 0.93), smoothstep(0.2, 0.75, l));
@@ -162,6 +174,7 @@ export class Pixel {
       uIndoor: { value: 0 },
       uLevels: { value: 40 },
       uWarm: { value: 0 },
+      uRain: { value: 0 },
     };
     const quad = new THREE.Mesh(
       new THREE.PlaneGeometry(2, 2),

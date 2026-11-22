@@ -29,7 +29,8 @@ Then open the address it prints (usually http://localhost:5173). It works with g
 - Walking into a small space (the cat flap, the cardboard box, a shed door, the hollow log) takes the whole family inside.
 - Curl up together anywhere and everyone sleeps until morning. The game reopens where the family last slept.
 - The "choose cats" panel changes coats, adds or removes kittens (up to four) and turns the sound words and music on or off. Nothing resets.
-- `T` skips ahead towards night.
+- Now and then there is a gentle shower; indoors you hear it on the roof.
+- `T` skips ahead towards night, `P` starts or stops a shower.
 
 ## The place
 

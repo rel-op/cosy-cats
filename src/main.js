@@ -593,6 +593,7 @@ function start() {
 addEventListener('keydown', (e) => {
   audio.unlock();
   if (e.code === 'KeyT' && started && !sleep.active) day.set(day.t + 0.1); // skip ahead towards night
+  if (e.code === 'KeyP' && started) { weather.on = !weather.on; weather.timer = weather.on ? 90 : 400; } // start or stop a shower
 });
 addEventListener('pointerdown', () => audio.unlock());
 
@@ -617,11 +618,23 @@ world.emit = (what, pos) => {
   else if (what === 'ball') audio.play('bell', { vol: 0.4 });
 };
 
+// ---------- weather: now and then a gentle shower, which makes indoors feel better ----------
+const weather = { rain: 0, on: false, timer: 240 + Math.random() * 180 };
+function updateWeather(dt) {
+  if (!CAPTURE && started && !sleep.active) {
+    weather.timer -= dt;
+    if (weather.timer <= 0) { weather.on = !weather.on; weather.timer = weather.on ? 70 + Math.random() * 50 : 330 + Math.random() * 300; }
+  }
+  weather.rain += ((weather.on ? 1 : 0) - weather.rain) * Math.min(1, dt * 0.25);
+  pixel.uniforms.uRain.value = weather.rain < 0.01 ? 0 : weather.rain;
+}
+
 // ---------- sound that follows the place and the hour ----------
 function updateAudio(dt) {
   const r = region(), n = day.night, inside = r.indoor ? 1 : 0;
   audio.enclose(inside * 0.92);
-  audio.loop('amb_day', 0.5 * (1 - n) * (inside ? 0.7 : 1));
+  audio.loop('amb_day', 0.5 * (1 - n) * (inside ? 0.7 : 1) * (1 - weather.rain * 0.7));
+  audio.loop('amb_rain', weather.rain * (inside ? 0.75 : 0.5));
   audio.loop('amb_night', 0.55 * n * (inside ? 0.7 : 1));
   let water = 0;
   if (!inside) for (const p of world.ponds) water = Math.max(water, 1 - Math.hypot(p.x - mama.pos.x, p.z - mama.pos.z) / (p.rx * 2 + 4));
@@ -744,7 +757,8 @@ function step(dt) {
   world.update(dt, time, cats, day.night);
   fx.update(dt);
   updateCamera(dt);
-  day.apply(region(), cam.target);
+  updateWeather(dt);
+  day.apply(region(), cam.target, weather.rain);
   labels.update(dt, pixel);
   updateAudio(dt);
 }
@@ -762,4 +776,4 @@ pixel.resize();
 if (CAPTURE) { step(1 / 60); render(); } else requestAnimationFrame(frame);
 
 // handy for poking at things from the console, for tests and for filming the trailer
-window.game = { snap: () => { camSnap = true; }, join, debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };
+window.game = { weather, snap: () => { camSnap = true; }, join, debug, cats, mama, players, input, world, day, sleep, step, render, pixel, scene, audio, labels, fx, menu, save, cam, mount, dismount, start, arrive, V, get time() { return time; }, get trans() { return trans; } };

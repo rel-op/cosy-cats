@@ -1,7 +1,7 @@
 // Sound: short effects and seamless loops through Web Audio, music streamed through audio elements.
 // Everything is optional: if a file is missing or audio is locked, calls quietly do nothing.
 const VARIANTS = { meow: ['meow1', 'meow2', 'meow3'], mew: ['mew1', 'mew2', 'mew3'], trill: ['trill1', 'trill2'] };
-const LOOPS = ['purr', 'amb_day', 'amb_night', 'amb_fire', 'amb_room', 'amb_water'];
+const LOOPS = ['purr', 'amb_day', 'amb_night', 'amb_fire', 'amb_room', 'amb_water', 'amb_rain'];
 
 export class Audio {
   constructor({ silent = false } = {}) {
