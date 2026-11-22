@@ -29,6 +29,7 @@ export class DayNight {
     sc.updateProjectionMatrix();
     this.sun.shadow.bias = -0.0006;
     this.sun.shadow.normalBias = 0.04;
+    this.sun.shadow.radius = 2.5; // soft-edged shadows
     scene.add(this.sun, this.sun.target);
     this.hemi = new THREE.HemisphereLight('#ffffff', '#ffffff', 1);
     scene.add(this.hemi);

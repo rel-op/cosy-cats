@@ -260,7 +260,7 @@ function home(W, b, rand, out) {
   b.block(-11.85, -9.3, 1.7, 1.85, -4.6, -1.0, C.slate);
   b.block(-9.5, -9.3, 0, 1.85, -1.2, -1.0, C.woodD);
   b.block(-11.85, -9.3, 0, 1.85, -4.6, -4.45, C.wood);
-  b.blob(-10.6, 0, -2.7, 1.05, C.hay, { sy: 0.24, variant: 1, detail: 2, amp: 0.2, facet: true }); b.blob(-10.1, 0, -3.5, 0.65, tint(C.hay, -0.06), { sy: 0.32, variant: 2, detail: 1, amp: 0.25, facet: true }); b.blob(-11.0, 0, -1.9, 0.5, tint(C.hay, 0.04), { sy: 0.3, variant: 3, detail: 1, amp: 0.25, facet: true });
+  b.blob(-10.6, 0, -2.7, 1.05, C.hay, { sy: 0.24, variant: 1, detail: 2, amp: 0.2 }); b.blob(-10.1, 0, -3.5, 0.65, tint(C.hay, -0.06), { sy: 0.32, variant: 2, detail: 2, amp: 0.22 }); b.blob(-11.0, 0, -1.9, 0.5, tint(C.hay, 0.04), { sy: 0.3, variant: 3, detail: 2, amp: 0.22 });
   for (let i = 0; i < 14; i++) { const sx = -11.5 + rand() * 2.0, sz = -4.0 + rand() * 2.6; b.box(sx, sx + 0.3, 0.01, 0.03, sz, sz + 0.03, i % 2 ? C.hay : tint(C.hay, 0.06), { rot: [0, rand() * 3, 0] }); }
   for (let i = 0; i < 5; i++) { const lx = -11.3 + (i % 3) * 0.42 + Math.floor(i / 3) * 0.21, ly = 0.2 + Math.floor(i / 3) * 0.36; b.lying(lx, ly, -4.1, 0.6, 0.2, C.bark, 'z', { seg: 7 }); b.lying(lx, ly, -3.79, 0.02, 0.15, C.woodL, 'z', { seg: 7 }); }
   W.addBed('hay', 'outside', b.p(-10.6, 0, -2.7), 0.95);

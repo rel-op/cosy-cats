@@ -30,9 +30,11 @@ uniform float uIndoor;
 uniform float uLevels;
 uniform float uWarm;
 uniform float uRain;
+uniform vec2 uLow;
 varying vec2 vUv;
 
-float D(vec2 o) { return texture2D(tDepth, vUv + o / uRes).x * uRange; }
+// offsets are in final (low-resolution) pixels; the scene itself is drawn finer than that
+float D(vec2 o) { return texture2D(tDepth, vUv + o / uLow).x * uRange; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vnoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
@@ -54,7 +56,7 @@ vec3 toSRGB(vec3 c) {
   return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c));
 }
 vec3 texel(vec2 o) {
-  vec3 c = toSRGB(texture2D(tColor, vUv + o / uRes).rgb);
+  vec3 c = toSRGB(texture2D(tColor, vUv + o / uLow).rgb);
   // soft shoulder so bright light rolls off instead of clipping to flat yellow
   vec3 over = max(c - 0.78, 0.0);
   return min(c, 0.78) + (1.0 - exp(-over * 2.2)) * 0.2;
@@ -62,10 +64,10 @@ vec3 texel(vec2 o) {
 vec3 bright(vec2 o) { vec3 c = texel(o); float l = max(c.r, max(c.g, c.b)); return c * smoothstep(0.8, 0.97, l); }
 
 void main() {
-  vec2 px = floor(vUv * uRes);
+  vec2 px = floor(vUv * uLow);
   float raw = texture2D(tDepth, vUv).x;
   vec3 col;
-  float levels = uLevels;
+  float solid = 1.0;
   if (raw >= 0.9999) {
     // sky: a dithered gradient with drifting clouds by day and stars by night
     float g = vUv.y;
@@ -78,7 +80,7 @@ void main() {
     float star = step(0.9965, hash(sp));
     float tw = 0.6 + 0.4 * sin(uTime * 2.0 + hash(sp + 3.0) * 40.0);
     col += vec3(1.0, 0.96, 0.82) * star * tw * uNight * (1.0 - uIndoor) * (1.0 - puff);
-    levels = 18.0;
+    solid = 0.0;
   } else {
     col = texel(vec2(0.0));
     float d = raw * uRange;
@@ -125,16 +127,39 @@ void main() {
   col = mix(col, col * vec3(1.08, 0.98, 0.86), uWarm);
   col = mix(vec3(l), col, 1.16);
   col = (col - 0.5) * 1.06 + 0.5;
-  // limited palette with ordered dithering
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), solid);
+}`;
+
+// The last step: average the finer picture down to chunky pixels (which is what smooths the edges),
+// then limit the palette, and add the vignette, iris wipe and fades.
+const FINAL = /* glsl */ `
+precision highp float;
+uniform sampler2D tPost;
+uniform vec2 uLow;
+uniform float uLevels;
+uniform float uFade;
+uniform vec3 uFadeColor;
+uniform vec3 uIris;
+varying vec2 vUv;
+float bayer(vec2 p) {
+  vec2 a = floor(mod(p, 4.0));
+  float i = a.x + a.y * 4.0;
+  float v = 0.0;
+  if (i < 0.5) v = 0.0; else if (i < 1.5) v = 8.0; else if (i < 2.5) v = 2.0; else if (i < 3.5) v = 10.0;
+  else if (i < 4.5) v = 12.0; else if (i < 5.5) v = 4.0; else if (i < 6.5) v = 14.0; else if (i < 7.5) v = 6.0;
+  else if (i < 8.5) v = 3.0; else if (i < 9.5) v = 11.0; else if (i < 10.5) v = 1.0; else if (i < 11.5) v = 9.0;
+  else if (i < 12.5) v = 15.0; else if (i < 13.5) v = 7.0; else if (i < 14.5) v = 13.0; else v = 5.0;
+  return (v + 0.5) / 16.0;
+}
+void main() {
+  vec2 px = floor(vUv * uLow);
+  vec4 c = texture2D(tPost, (px + 0.5) / uLow);
+  vec3 col = c.rgb;
+  float levels = mix(18.0, uLevels, c.a);
   col = floor(col * levels + bayer(px)) / levels;
-  // vignette
   vec2 q = vUv - 0.5;
   col *= 1.0 - dot(q, q) * 0.42;
-  // iris wipe
-  if (uIris.z >= 0.0) {
-    float r = length(px - uIris.xy);
-    col *= step(r, uIris.z);
-  }
+  if (uIris.z >= 0.0) col *= step(length(px - uIris.xy), uIris.z);
   col = mix(col, uFadeColor, uFade);
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
@@ -145,7 +170,7 @@ export class Pixel {
     const r = (this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' }));
     r.setPixelRatio(1);
     r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFShadowMap;
+    r.shadowMap.type = THREE.PCFSoftShadowMap;
     r.toneMapping = THREE.NoToneMapping;
     r.setClearColor(0x000000, 1);
 
@@ -157,11 +182,16 @@ export class Pixel {
     });
     this.rt.depthTexture = new THREE.DepthTexture(4, 4);
     this.rt.depthTexture.minFilter = this.rt.depthTexture.magFilter = THREE.NearestFilter;
+    // the scene is drawn at twice the final resolution and averaged down, so edges come out smooth
+    this.ss = 2;
+    this.rtPost = new THREE.WebGLRenderTarget(4, 4, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false });
 
     this.uniforms = {
       tColor: { value: this.rt.texture },
       tDepth: { value: this.rt.depthTexture },
       uRes: { value: new THREE.Vector2(4, 4) },
+      uLow: { value: new THREE.Vector2(4, 4) },
+      tPost: { value: this.rtPost.texture },
       uRange: { value: 300 },
       uSkyTop: { value: new THREE.Color('#9fd4ee') },
       uSkyBot: { value: new THREE.Color('#fdeccb') },
@@ -184,6 +214,13 @@ export class Pixel {
     this.post = new THREE.Scene();
     this.post.add(quad);
     this.postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const last = new THREE.Mesh(
+      new THREE.PlaneGeometry(2, 2),
+      new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: FINAL, uniforms: this.uniforms, depthTest: false, depthWrite: false })
+    );
+    last.frustumCulled = false;
+    this.final = new THREE.Scene();
+    this.final.add(last);
 
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 300);
     this.dir = new THREE.Vector3(1, 0.8165, 1).normalize(); // 30 degrees: ground lines land on a clean 2:1 pixel slope // from target towards camera
@@ -206,8 +243,10 @@ export class Pixel {
     this.view.set(Math.ceil(w / this.px), Math.ceil(h / this.px));
     this.low.set(this.view.x + 2, this.view.y + 2);
     this.renderer.setSize(this.low.x, this.low.y, false);
-    this.rt.setSize(this.low.x, this.low.y);
-    this.uniforms.uRes.value.copy(this.low);
+    this.rt.setSize(this.low.x * this.ss, this.low.y * this.ss);
+    this.rtPost.setSize(this.low.x * this.ss, this.low.y * this.ss);
+    this.uniforms.uRes.value.copy(this.low).multiplyScalar(this.ss);
+    this.uniforms.uLow.value.copy(this.low);
     const s = this.canvas.style;
     s.width = this.low.x * this.px + 'px';
     s.height = this.low.y * this.px + 'px';
@@ -277,7 +316,9 @@ export class Pixel {
     const r = this.renderer;
     r.setRenderTarget(this.rt);
     r.render(scene, this.camera);
-    r.setRenderTarget(null);
+    r.setRenderTarget(this.rtPost);
     r.render(this.post, this.postCam);
+    r.setRenderTarget(null);
+    r.render(this.final, this.postCam);
   }
 }

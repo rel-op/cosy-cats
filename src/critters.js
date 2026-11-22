@@ -185,7 +185,7 @@ export function buildCritters(W, out, rand) {
   for (let i = 0; i < NF; i++) fbase.push([-58 + rand() * 116, 0.4 + rand() * 1.5, -9.5 + rand() * 24, rand() * 10]);
   const fgeo = new THREE.BufferGeometry();
   fgeo.setAttribute('position', new THREE.BufferAttribute(fpos, 3));
-  const fmat = new THREE.PointsMaterial({ color: '#fff3a0', size: 2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false });
+  const fmat = new THREE.PointsMaterial({ color: '#fff3a0', size: 4, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false });
   const fire = new THREE.Points(fgeo, fmat);
   fire.frustumCulled = false;
   fire.renderOrder = 4;
@@ -211,7 +211,7 @@ export function buildCritters(W, out, rand) {
   for (let i = 0; i < NM; i++) mbase.push([rand() * 30, rand() * 4.5, rand() * 20, rand() * 10]);
   const mgeo = new THREE.BufferGeometry();
   mgeo.setAttribute('position', new THREE.BufferAttribute(mpos, 3));
-  const mmat = new THREE.PointsMaterial({ color: '#fff6d2', size: 1, sizeAttenuation: false, transparent: true, opacity: 0.5, depthWrite: false });
+  const mmat = new THREE.PointsMaterial({ color: '#fff6d2', size: 2, sizeAttenuation: false, transparent: true, opacity: 0.5, depthWrite: false });
   const motes = new THREE.Points(mgeo, mmat);
   motes.frustumCulled = false;
   motes.renderOrder = 4;

@@ -398,7 +398,7 @@ export function frontWall(b, z, x0, x1, kind, { h = 0.5, gaps = [] } = {}) {
 export function steppingStones(b, pts) {
   pts.forEach(([x, z], i) => {
     b.disc(x, 0.011, z, 0.62 + (i % 3) * 0.05, '#6f8f3c', { seg: 9, layer: 'ground' });
-    b.blob(x, 0.0, z, 0.5 + (i % 3) * 0.05, i % 2 ? C.stone : C.stoneL, { sy: 0.09, tex: TEX.stone, variant: i % 4, detail: 1, amp: 0.12, facet: true });
+    b.blob(x, 0.0, z, 0.5 + (i % 3) * 0.05, i % 2 ? C.stone : C.stoneL, { sy: 0.09, tex: TEX.stone, variant: i % 4, detail: 2, amp: 0.1 });
   });
 }
 
@@ -410,7 +410,7 @@ export function lampPost(b, x, z, h = 2.6) {
 
 export function rock(b, x, z, r, color = C.stone) {
   const v = Math.abs(Math.round(x * 7 + z * 3)) % 4;
-  b.blob(x, r * 0.28, z, r, color, { sy: 0.66, tex: TEX.stone, variant: v, detail: 1, amp: 0.24, facet: true });
+  b.blob(x, r * 0.28, z, r, color, { sy: 0.66, tex: TEX.stone, variant: v, detail: 2, amp: 0.2 });
   if (r > 0.3) b.blob(x - r * 0.1, r * 0.5, z - r * 0.1, r * 0.5, C.moss, { sy: 0.25, tex: TEX.leaf, variant: v, detail: 1, amp: 0.2 });
 }
 

@@ -108,7 +108,7 @@ export class Cat {
       shine: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
     });
 
-    const sphere = new THREE.SphereGeometry(1, 16, 11);
+    const sphere = new THREE.SphereGeometry(1, 28, 18);
     const add = (parent, geo, material, x, y, z, sx = 1, sy = sx, sz = sx) => {
       const mesh = new THREE.Mesh(geo, material);
       mesh.position.set(x, y, z);
@@ -140,7 +140,7 @@ export class Cat {
     for (const f of [-0.5, 0, 0.5]) {
       const z = f * L;
       const R = 0.2 * Math.sqrt(1 - (z / L) ** 2) + 0.006;
-      const s = new THREE.Mesh(new THREE.TorusGeometry(R, 0.02, 5, 14, Math.PI), m.stripe);
+      const s = new THREE.Mesh(new THREE.TorusGeometry(R, 0.02, 8, 24, Math.PI), m.stripe);
       s.position.set(0, bodyY, z);
       body.add(s);
       this.stripes.push(s);
@@ -169,8 +169,8 @@ export class Cat {
       }
     }
     this.patches.push(add(head, sphere, m.patch[3], hc.x - 0.07 * hs, hc.y + 0.07 * hs, hc.z + 0.02 * hs, 0.13 * hs, 0.12 * hs, 0.14 * hs));
-    const earGeo = new THREE.ConeGeometry(0.08 * hs, 0.16 * hs, 8);
-    const innerGeo = new THREE.ConeGeometry(0.045 * hs, 0.1 * hs, 6);
+    const earGeo = new THREE.ConeGeometry(0.08 * hs, 0.16 * hs, 14);
+    const innerGeo = new THREE.ConeGeometry(0.045 * hs, 0.1 * hs, 10);
     for (const s of [-1, 1]) {
       const ear = add(head, earGeo, m.ears, hc.x + s * 0.11 * hs, hc.y + 0.17 * hs, hc.z - 0.01 * hs);
       ear.rotation.z = -s * 0.3;
@@ -195,7 +195,7 @@ export class Cat {
     head.add(this.mouth);
 
     this.legs = [];
-    const legGeo = new THREE.CapsuleGeometry(0.055, Math.max(0.02, legLen - 0.06), 3, 8);
+    const legGeo = new THREE.CapsuleGeometry(0.055, Math.max(0.02, legLen - 0.06), 6, 14);
     const hipY = legLen + 0.04;
     for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
       const leg = new THREE.Group();
@@ -203,7 +203,7 @@ export class Cat {
       body.add(leg);
       add(leg, legGeo, m.legs, 0, -hipY / 2, 0);
       add(leg, sphere, m.paws, 0, -hipY + 0.045, 0.015, 0.064, 0.048, 0.078);
-      const band = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.014, 4, 10), m.stripe);
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.014, 6, 16), m.stripe);
       band.rotation.x = Math.PI / 2;
       band.position.y = -hipY * 0.45;
       leg.add(band);

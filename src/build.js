@@ -167,6 +167,43 @@ export const litMat = new THREE.MeshBasicMaterial({ color: '#ffffff', vertexColo
 export const waterMat = toon('#ffffff', { vertexColors: true, transparent: true, opacity: 0.9 }, { tex: 0, kind: 'water' });
 
 const UNIT_BOX = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
+// A box whose edges are bevelled, with shading that rolls smoothly round the bevel, so nothing has a razor edge.
+function softBox(w, h, d, r) {
+  const H = [w / 2, h / 2, d / 2], pos = [], nor = [], idx = [];
+  const sign = (k, a) => ((k >> a) & 1 ? 1 : -1);
+  // three vertices at each of the eight corners, one for each face that meets there
+  for (let a = 0; a < 3; a++) for (let k = 0; k < 8; k++) {
+    const p = [0, 0, 0], n = [0, 0, 0];
+    for (let c = 0; c < 3; c++) p[c] = sign(k, c) * (c === a ? H[c] : H[c] - r);
+    n[a] = sign(k, a);
+    pos.push(...p); nor.push(...n);
+  }
+  const V = (a, k) => a * 8 + k;
+  const tri = (i, j, k) => {
+    // keep every triangle facing outwards
+    const A = [pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]], B = [pos[j * 3], pos[j * 3 + 1], pos[j * 3 + 2]], C = [pos[k * 3], pos[k * 3 + 1], pos[k * 3 + 2]];
+    const u = [B[0] - A[0], B[1] - A[1], B[2] - A[2]], v = [C[0] - A[0], C[1] - A[1], C[2] - A[2]];
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const out = n[0] * (A[0] + B[0] + C[0]) + n[1] * (A[1] + B[1] + C[1]) + n[2] * (A[2] + B[2] + C[2]);
+    if (out >= 0) idx.push(i, j, k); else idx.push(i, k, j);
+  };
+  for (let a = 0; a < 3; a++) {
+    const b = (a + 1) % 3, c = (a + 2) % 3;
+    for (const sa of [0, 1]) {
+      const k = (sb, sc) => (sa << a) | (sb << b) | (sc << c);
+      tri(V(a, k(0, 0)), V(a, k(1, 0)), V(a, k(1, 1))); tri(V(a, k(0, 0)), V(a, k(1, 1)), V(a, k(0, 1)));
+      // the bevel between this face and the next axis's faces
+      for (const sb of [0, 1]) { const k0 = (sa << a) | (sb << b), k1 = k0 | (1 << c); tri(V(a, k0), V(a, k1), V(b, k1)); tri(V(a, k0), V(b, k1), V(b, k0)); }
+    }
+  }
+  for (let k = 0; k < 8; k++) tri(V(0, k), V(1, k), V(2, k));
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setIndex(idx);
+  return g.toNonIndexed();
+}
+
 // surface kinds the shader knows how to paint
 export const TEX = { plain: 0, wood: 1, brick: 2, stone: 3, leaf: 4, bark: 5, tile: 6, plaster: 7 };
 // colours that say what they are without being told
@@ -247,14 +284,19 @@ export class Builder {
     return tmpM.compose(new THREE.Vector3(x + this.ox, y + this.oy, z + this.oz), tmpQ, new THREE.Vector3(sx, sy, sz));
   }
 
-  box(x0, x1, y0, y1, z0, z1, color, { r = 0, layer, rot, tex } = {}) {
+  box(x0, x1, y0, y1, z0, z1, color, { r = 0, layer, rot, tex, sharp = false } = {}) {
     const w = x1 - x0, h = y1 - y0, d = z1 - z0;
     const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, cz = (z0 + z1) / 2;
     const [rx, ry, rz] = rot || [0, 0, 0];
+    const least = Math.min(w, h, d);
     if (r > 0) {
       const rad = Math.max(0.001, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001));
-      const g = new RoundedBoxGeometry(w, h, d, 2, rad).toNonIndexed();
+      const g = new RoundedBoxGeometry(w, h, d, 3, rad).toNonIndexed();
+      g.deleteAttribute('uv');
       this.geo(g, color, this.mat(cx, cy, cz, 1, 1, 1, rx, ry, rz), { layer, tex });
+    } else if (least >= 0.09 && !sharp) {
+      // anything big enough to see gets softened edges
+      this.geo(softBox(w, h, d, Math.max(0.014, Math.min(0.055, least * 0.2))), color, this.mat(cx, cy, cz, 1, 1, 1, rx, ry, rz), { layer, tex });
     } else {
       this.geo(UNIT_BOX, color, this.mat(cx, cy, cz, w, h, d, rx, ry, rz), { layer, tex });
     }
@@ -273,6 +315,7 @@ export class Builder {
   }
 
   cyl(x, y0, y1, z, rTop, rBot, color, { seg = 10, layer, rot, tex } = {}) {
+    seg = Math.max(seg, rBot > 0.45 ? 20 : rBot > 0.2 ? 16 : rBot > 0.08 ? 10 : seg);
     const g = cached('cyl' + seg, () => new THREE.CylinderGeometry(1, 1, 1, seg));
     // unit cylinder has equal radii; taper by building a specific one when needed
     const geo = rTop === rBot ? g : cached(`cyl${seg}:${(rTop / rBot).toFixed(3)}`, () => new THREE.CylinderGeometry(rTop / rBot, 1, 1, seg));
@@ -281,11 +324,13 @@ export class Builder {
   }
 
   cone(x, y0, y1, z, r, color, { seg = 8, layer, sway = 0, tex, up } = {}) {
+    if (seg >= 6) seg = Math.max(seg, r > 0.4 ? 16 : r > 0.15 ? 12 : seg);
     const g = cached('cone' + seg, () => new THREE.ConeGeometry(1, 1, seg));
     this.geo(g, color, this.mat(x, (y0 + y1) / 2, z, r, y1 - y0, r), { layer, sway, tex, up });
   }
 
   ball(x, y, z, r, color, { sx = 1, sy = 1, sz = 1, layer, sway = 0, seg = 10, rot, tex } = {}) {
+    seg = Math.max(seg, r > 0.5 ? 20 : r > 0.22 ? 16 : r > 0.1 ? 12 : seg);
     const g = cached('ball' + seg, () => new THREE.SphereGeometry(1, seg, Math.max(5, Math.round(seg * 0.7))));
     const [rx, ry, rz] = rot || [0, 0, 0];
     this.geo(g, color, this.mat(x, y, z, r * sx, r * sy, r * sz, rx, ry, rz), { layer, sway, tex });
@@ -312,18 +357,21 @@ export class Builder {
 
   // flat disc lying on the ground
   disc(x, y, z, r, color, { seg = 20, layer, sx = 1, sz = 1, tex } = {}) {
+    seg = Math.max(seg, r > 0.5 ? 28 : r > 0.15 ? 16 : seg);
     const g = cached('disc' + seg, () => new THREE.CircleGeometry(1, seg).rotateX(-Math.PI / 2));
     this.geo(g, color, this.mat(x, y, z, r * sx, 1, r * sz), { layer, tex });
   }
 
   // a cylinder lying on its side, centred at (x, y, z)
   lying(x, y, z, len, r, color, axis = 'x', { seg = 9, layer, tex } = {}) {
+    seg = Math.max(seg, r > 0.3 ? 18 : r > 0.12 ? 12 : seg);
     const g = cached('cyl' + seg, () => new THREE.CylinderGeometry(1, 1, 1, seg));
     this.geo(g, color, this.mat(x, y, z, r, len, r, axis === 'z' ? Math.PI / 2 : 0, 0, axis === 'x' ? Math.PI / 2 : 0), { layer, tex });
   }
 
   // a beam between two points
   beam(a, b, r, color, { seg = 6, layer, tex } = {}) {
+    seg = Math.max(seg, r > 0.08 ? 10 : seg);
     const from = new THREE.Vector3(...a), to = new THREE.Vector3(...b);
     const len = from.distanceTo(to);
     const g = cached('cyl' + seg, () => new THREE.CylinderGeometry(1, 1, 1, seg));
